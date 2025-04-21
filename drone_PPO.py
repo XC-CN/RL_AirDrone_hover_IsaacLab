@@ -30,7 +30,7 @@ class HoverEnv:
         self.wind_direction_deg = 0.0  # 风向(角度)，用于输出显示
         
         # 风力随机范围
-        self.min_wind_strength = 0.2  # 最小风力强度 (N)
+        self.min_wind_strength = 0.3  # 最小风力强度 (N)
         self.max_wind_strength = 0.5  # 最大风力强度 (N)
         
         # 风力变化
@@ -113,7 +113,7 @@ class HoverEnv:
         
         # 打印风力信息
         if self.enable_gui:
-            print(f"新的风力设置: 强度={self.wind_strength:.2f}N, 风向={self.wind_direction_deg:.1f}°")
+            print(f"New wind settings: Strength={self.wind_strength:.2f}N, Direction={self.wind_direction_deg:.1f}°")
 
     def _update_wind_force(self):
         """更新风力，增加随机变化"""
@@ -132,7 +132,7 @@ class HoverEnv:
         if self.enable_gui and self.enable_wind:
             # 如果启用了GUI且风力不为零，打印风力信息
             wind_dir_deg = np.degrees(current_direction)
-            print(f"\r当前风力: {current_strength:.2f}N, 风向: {wind_dir_deg:.1f}°", end="")
+            print(f"\rCurrent wind: {current_strength:.2f}N, Direction: {wind_dir_deg:.1f}°", end="")
 
     def reset(self):
         # 如果启用了风力，在每个回合开始时重新随机生成风力和风向
@@ -522,7 +522,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
     
     # 打印风力设置
     if enable_wind:
-        print(f"训练环境风力设置: 启用随机风力，强度范围=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N]，风向=随机")
+        print(f"Training environment wind settings: Random wind enabled, Strength range=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N], Direction=random")
     
     # 创建PPO模型
     actor = PPOActor(state_dim, action_dim).to(device)
@@ -552,15 +552,15 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
     # 回合结束原因跟踪
     episode_end_reason = ""
     
-    print("开始训练...")
+    print("Starting training...")
     if not enable_gui:
-        print("无GUI模式，训练速度将大幅提升")
+        print("GUI mode disabled for training, training speed will be significantly increased")
     
     # 打印表头
     if enable_wind:
-        header = "Episode |  步数 |   奖励  | 平均奖励 |  风力(N)  |  风向(°)  | 结束原因"
+        header = "Episode |   Steps |    Reward  |  Average Reward |   Wind(N)  |   Wind Direction(°)  |  End Reason"
     else:
-        header = "Episode |  步数 |   奖励  | 平均奖励 | 结束原因"
+        header = "Episode |   Steps |    Reward  |  Average Reward |  End Reason"
     divider = "-" * 100
     print(divider)
     print(header)
@@ -597,7 +597,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
         # 检查是否达到最大步数
         if episode_steps >= max_steps_per_episode:
             done = True
-            episode_end_reason = f"达到最大步数限制 ({max_steps_per_episode}步)"
+            episode_end_reason = f"Maximum steps reached ({max_steps_per_episode} steps)"
         
         # 获取速度和姿态信息
         lin_vel = np.array([next_state[9], next_state[10], next_state[11]])  # 线速度
@@ -621,7 +621,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             
         # 如果持续稳定悬停一段时间，提前结束当前episode
         if stable_hover_time >= stable_time_required:
-            episode_end_reason = f"稳定悬停达到阈值 ({stable_time_required}步)"
+            episode_end_reason = f"Stable hovering achieved ({stable_time_required} steps)"
             done = True
         
         # 存储经验
@@ -722,11 +722,11 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
                 # 获取高度和XY位置
                 x, y, z = next_state[0], next_state[1], next_state[2]
                 if z < env.min_height or z > env.max_height:
-                    episode_end_reason = f"高度超出范围 ({z:.2f})"
+                    episode_end_reason = f"Height out of bounds ({z:.2f})"
                 elif abs(x) > env.xy_boundary or abs(y) > env.xy_boundary:
-                    episode_end_reason = f"水平位置超出范围 ({x:.2f}, {y:.2f})"
+                    episode_end_reason = f"Horizontal position out of bounds ({x:.2f}, {y:.2f})"
                 else:
-                    episode_end_reason = "环境内部终止条件"
+                    episode_end_reason = "Internal environment termination"
             
             # 记录平均奖励
             avg_rewards.append(episode_reward)
@@ -769,7 +769,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
                     'total_steps': total_steps,
                     'avg_reward': current_avg_reward
                 }, model_path)
-                print(f"最佳模型已保存: {model_path}, 平均奖励: {current_avg_reward:.2f}")
+                print(f"Best model saved: {model_path}, Average reward: {current_avg_reward:.2f}")
     
     # 训练结束，保存最终模型
     final_model_path = f"models/ppo/quad_hover_ppo_final_model.pt"
@@ -782,7 +782,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
         'total_steps': total_steps,
         'avg_reward': current_avg_reward if len(avg_rewards) > 0 else 0.0
     }, final_model_path)
-    print(f"最终模型已保存: {final_model_path}")
+    print(f"Final model saved: {final_model_path}")
     
     # 关闭环境
     env.close()
@@ -843,10 +843,10 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     
     # 打印风力设置
     if enable_wind:
-        print(f"评估环境风力设置: 启用随机风力，强度范围=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N]，风向=随机")
-        print(f"风力更新频率: 每300步更新一次")
+        print(f"Evaluation environment wind settings: Random wind enabled, Strength range=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N], Direction=random")
+        print(f"Wind update frequency: Every 100 steps")
     else:
-        print("评估环境风力设置: 无风干扰")
+        print("Evaluation environment wind settings: No wind disturbance")
     
     # 加载模型
     actor = PPOActor(state_dim, action_dim).to(device)
@@ -854,9 +854,9 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     actor.load_state_dict(checkpoint['actor'])
     actor.eval()
     
-    print(f"加载模型: {model_path}")
+    print(f"Model loaded: {model_path}")
     if enable_gui:
-        print("GUI模式已启用，可以观察无人机飞行状态")
+        print("GUI mode enabled, drone flight status can be observed")
     
     episode_rewards = []
     episode_durations = []
@@ -876,10 +876,10 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
         # 记录风力变化
         wind_change_count = 0  # 风力变化次数
         
-        print(f"\n=============== 开始评估回合 {episode+1} ===============")
+        print(f"\n=============== Starting evaluation episode {episode+1} ===============")
         # 打印当前回合的风力信息
         if enable_wind:
-            print(f"初始风力: 强度={env.wind_strength:.2f}N, 风向={env.wind_direction_deg:.1f}°")
+            print(f"Initial wind: Strength={env.wind_strength:.2f}N, Direction={env.wind_direction_deg:.1f}°")
         
         while not done:
             # 每隔一定步数更新一次风力
@@ -893,18 +893,18 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
                 wind_change_count += 1
                 
                 # 打印风力变化信息
-                print(f"\n--- 步数: {steps}，风力已更新 (第{wind_change_count}次) ---")
-                print(f"旧风力: 强度={old_strength:.2f}N, 风向={old_direction:.1f}°")
-                print(f"新风力: 强度={env.wind_strength:.2f}N, 风向={env.wind_direction_deg:.1f}°")
+                print(f"\n--- Step: {steps}, Wind updated (#{wind_change_count}) ---")
+                print(f"Old wind: Strength={old_strength:.2f}N, Direction={old_direction:.1f}°")
+                print(f"New wind: Strength={env.wind_strength:.2f}N, Direction={env.wind_direction_deg:.1f}°")
             
             # 重置一次无人机姿态
-            if steps > 0 and steps % 300 == 0:
-                print(f"\n--- 步数: {steps}，重置无人机姿态 ---")
+            if steps > 0 and steps % 500 == 0:
+                print(f"\n--- Step: {steps}, Resetting drone position ---")
                 state = env.reset()
                 
                 # 如果启用了风力，打印新的风力信息
                 if enable_wind:
-                    print(f"新风力: 强度={env.wind_strength:.2f}N, 风向={env.wind_direction_deg:.1f}°")
+                    print(f"New wind: Strength={env.wind_strength:.2f}N, Direction={env.wind_direction_deg:.1f}°")
                 
                 # 重置稳定悬停计数器
                 stable_hover_time = 0
@@ -940,12 +940,12 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
                 curr_wind_y = env.wind_force_y
                 curr_wind_strength = np.sqrt(curr_wind_x**2 + curr_wind_y**2)
                 curr_wind_dir = np.degrees(np.arctan2(curr_wind_y, curr_wind_x))
-                wind_info = f" | 风力: {curr_wind_strength:.2f}N, 风向: {curr_wind_dir:.1f}°"
+                wind_info = f" |  Wind: {curr_wind_strength:.2f}N, Direction: {curr_wind_dir:.1f}°"
             
-            print(f"\r步数: {steps:3d} | 位置: [{pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}] | "
-                  f"速度: [{lin_vel[0]:.2f}, {lin_vel[1]:.2f}, {lin_vel[2]:.2f}] | "
-                  f"姿态: [{roll:.2f}, {pitch:.2f}, {yaw:.2f}] | "
-                  f"误差: {np.linalg.norm(position_error):.3f}{wind_info}", end="")
+            print(f"\r Step: {steps:3d} | Position: [{pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}] | "
+                  f"Velocity: [{lin_vel[0]:.2f}, {lin_vel[1]:.2f}, {lin_vel[2]:.2f}] | "
+                  f"Attitude: [{roll:.2f}, {pitch:.2f}, {yaw:.2f}] | "
+                  f"Error: {np.linalg.norm(position_error):.3f}{wind_info}", end="")
             
             # 计算当前位置与目标位置的距离
             distance_to_target = np.linalg.norm(position_error)
@@ -966,7 +966,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
                 stable_hover_time += 1
                 # 打印稳定悬停信息，但不结束评估
                 if stable_hover_time == 100 and not hover_success_this_episode:  # stable_time_required = 100
-                    print(f"\n检测到稳定悬停，继续评估观察性能")
+                    print(f"\nStable hovering detected, continuing to observe performance")
                     hover_success_this_episode = True
             else:
                 stable_hover_time = 0
@@ -990,20 +990,20 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
         # 打印回合总结，加入风力信息
         wind_summary = ""
         if enable_wind:
-            wind_summary = f", 风力变化次数: {wind_change_count}, 强度范围: {env.min_wind_strength:.2f}N-{env.max_wind_strength:.2f}N"
+            wind_summary = f", Wind changes: {wind_change_count}, Strength range: {env.min_wind_strength:.2f}N-{env.max_wind_strength:.2f}N"
         
-        print(f"\n回合 {episode+1} 结束: 飞行持续时间={flight_duration:.2f}秒, 奖励={episode_reward:.2f}{wind_summary}")
+        print(f"\nEpisode {episode+1} completed: Flight duration={flight_duration:.2f}s, Reward={episode_reward:.2f}{wind_summary}")
     
     # 打印评估结果
     avg_reward = sum(episode_rewards) / num_episodes
     avg_duration = sum(episode_durations) / num_episodes
     success_rate = hover_success / num_episodes * 100
     
-    print("\n===== 评估结果 =====")
-    print(f"平均奖励: {avg_reward:.2f}")
-    print(f"平均飞行时间: {avg_duration:.2f}秒")
-    print(f"悬停成功率: {success_rate:.1f}%")
-    print(f"风力设置: {'启用' if enable_wind else '禁用'}")
+    print("\n===== Evaluation Results =====")
+    print(f"Average reward: {avg_reward:.2f}")
+    print(f"Average flight duration: {avg_duration:.2f}s")
+    print(f"Hovering success rate: {success_rate:.1f}%")
+    print(f"Wind settings: {'Enabled' if enable_wind else 'Disabled'}")
     
     # 关闭环境
     env.close()
@@ -1042,7 +1042,7 @@ if __name__ == "__main__":
         while i < len(sys.argv):
             if sys.argv[i] == "--gui":
                 enable_gui = True
-                print("启用GUI模式进行训练（可能会降低训练速度）")
+                print("GUI mode enabled for training (may reduce training speed)")
                 i += 1
             elif sys.argv[i] == "--wind":
                 enable_wind = True
@@ -1052,7 +1052,7 @@ if __name__ == "__main__":
                     max_episodes = int(sys.argv[i])
                     i += 1
                 except ValueError:
-                    print("参数必须是整数")
+                    print("Parameter must be an integer")
                     i += 1
         
         train_ppo(max_episodes, enable_gui=enable_gui, enable_wind=enable_wind) 
