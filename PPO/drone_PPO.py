@@ -20,6 +20,8 @@ def rpm_to_force(rpm, k_f=1e-6):
 class HoverEnv:
     def __init__(self, device="cpu", enable_gui=True, enable_wind=False):
         self.device = device
+
+        # 转速设置
         self.min_rpm = 4500
         self.max_rpm = 5500
         self.enable_gui = enable_gui  # 是否启用GUI

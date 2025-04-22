@@ -71,8 +71,8 @@ class HoverEnv:
             device = str(device)
         self.device = device
         # 转速最大最小值
-        self.min_rpm = 0
-        self.max_rpm = 2000
+        self.min_rpm = 4500
+        self.max_rpm = 5500
 
         # 用来追踪悬停时间
         self.hover_time = 0.0
@@ -274,16 +274,10 @@ class HoverEnv:
 
     def sample_action(self):
         """
-        随机采样动作，采样sqrt(RPM)并转换为RPM值
+        随机采样动作，生成连续的转速值
         """
-        # 在平方根空间中均匀采样
-        sqrt_rpms = np.random.uniform(
-            np.sqrt(self.min_rpm), 
-            np.sqrt(self.max_rpm), 
-            size=(4,)
-        )
-        # 转换回RPM
-        return sqrt_rpms ** 2
+        # 生成连续的随机转速值
+        return np.random.uniform(self.min_rpm, self.max_rpm, size=(4,))
 
     def close(self):
         """安全关闭仿真环境"""
@@ -303,7 +297,7 @@ class DQN(nn.Module):
     深度Q网络(DQN)模型定义
     
     用于无人机控制的神经网络模型，接收状态输入并输出每个动作的Q值
-    对应RPM的平方根，而不是直接输出RPM，使动作空间与物理效果更接近线性关系
+    输出值在[-1,1]范围内，然后映射到转速范围
     
     参数:
         state_dim: 状态空间维度，默认为9，包含位置、速度、姿态等信息
@@ -319,9 +313,6 @@ class DQN(nn.Module):
             nn.ReLU(),                 # 激活函数
             nn.Linear(64, action_dim)  # 第二隐藏层到输出层，输出每个动作的Q值
         )
-        # RPM范围的平方根
-        self.min_sqrt_rpm = np.sqrt(4900)  # sqrt(min_rpm)
-        self.max_sqrt_rpm = np.sqrt(7000)  # sqrt(max_rpm)
 
     def forward(self, x):
         """
@@ -331,15 +322,15 @@ class DQN(nn.Module):
             x: 输入状态张量
             
         返回:
-            每个动作的Q值，对应RPM的平方根值
+            范围在[-1,1]之间的动作值，之后会映射到RPM范围
         """
-        # 网络输出RPM的平方根值
-        sqrt_rpm = self.net(x)
+        # 网络输出值在[-1,1]范围内
+        action_values = self.net(x)
         
-        # 限制输出在合理的sqrt(RPM)范围内
-        sqrt_rpm = torch.clamp(sqrt_rpm, self.min_sqrt_rpm, self.max_sqrt_rpm)
+        # 使用tanh激活函数将输出限制在[-1,1]范围内
+        action_values = torch.tanh(action_values)
         
-        return sqrt_rpm
+        return action_values
 
 
 def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_drone/model"):
@@ -404,16 +395,17 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
             for step in range(300):  # 每回合最多300步
                 episode_length += 1
                 
-                # 选择动作
+                # 使用模型选择动作，不使用探索
                 state_tensor = torch.tensor(state, device=device).float()
                 with torch.no_grad():
-                    sqrt_action = q_net(state_tensor).cpu().numpy()
-                    # 将sqrt(RPM)转换为RPM
-                    action = sqrt_action ** 2
+                    actions = q_net(state_tensor).cpu().numpy()
+                    # 将[-1,1]范围的动作映射到[min_rpm, max_rpm]
+                    rpm_range = env.max_rpm - env.min_rpm
+                    action = env.min_rpm + (actions + 1) * 0.5 * rpm_range
 
                 # epsilon-贪婪策略
                 if random.random() < epsilon:
-                    action = env.sample_action()  # 这里sample_action已经返回实际RPM
+                    action = env.sample_action()  # 随机采样动作
 
                 # 执行动作
                 next_state, reward, done, info = env.step(action)
@@ -422,8 +414,10 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
                 position_error = np.sqrt((next_state[0]**2 + next_state[1]**2 + (next_state[2] - 0.5)**2))
                 last_position_error = position_error
                 
-                # 存储经验 - 注意：存储的是sqrt(RPM)
-                buffer.append((state, sqrt_action, reward, next_state, done))
+                # 存储经验 - 存储[-1,1]范围的动作值
+                # 将RPM转换回[-1,1]范围
+                normalized_action = 2.0 * (action - env.min_rpm) / rpm_range - 1.0
+                buffer.append((state, normalized_action, reward, next_state, done))
                 
                 # 更新状态和累积奖励
                 state = next_state
@@ -682,9 +676,10 @@ def test_drone(model_path="models/dqn_drone/model_final.pth", headless=False, te
                     # 使用模型选择动作，不使用探索
                     state_tensor = torch.tensor(state, device=device).float()
                     with torch.no_grad():
-                        sqrt_action = q_net(state_tensor).cpu().numpy()
-                        # 将sqrt(RPM)转换为RPM
-                        action = sqrt_action ** 2
+                        actions = q_net(state_tensor).cpu().numpy()
+                        # 将[-1,1]范围的动作映射到[min_rpm, max_rpm]
+                        rpm_range = env.max_rpm - env.min_rpm
+                        action = env.min_rpm + (actions + 1) * 0.5 * rpm_range
                     
                     # 执行动作
                     next_state, reward, done, info = env.step(action)
