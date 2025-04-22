@@ -577,9 +577,9 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
     
     # 打印表头
     if enable_wind:
-        header = "Episode |  步数 |   奖励  | 平均奖励 |  风力(N)  |  风向(°)  | 结束原因"
+        header = "回合  |  步数  |   奖励   |  平均奖励  |   风力   |   风向   | 结束原因"
     else:
-        header = "Episode |  步数 |   奖励  | 平均奖励 | 结束原因"
+        header = "回合  |  步数  |   奖励   |  平均奖励  | 结束原因"
     divider = "-" * 100
     print(divider)
     print(header)
@@ -823,9 +823,9 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             
             # 格式化输出回合信息
             if enable_wind:
-                print(f"{episode:7d} | {episode_steps:5d} | {episode_reward:8.2f} | {current_avg_reward:8.2f} | {env.wind_strength:8.2f} | {env.wind_direction_deg:9.1f} | {episode_end_reason}")
+                print(f"回合: {episode:5d} | 步数: {episode_steps:5d} | 奖励: {episode_reward:8.2f} | 平均奖励: {current_avg_reward:8.2f} | 风力: {env.wind_strength:7.2f}N | 风向: {env.wind_direction_deg:8.1f}° | 结束原因: {episode_end_reason}")
             else:
-                print(f"{episode:7d} | {episode_steps:5d} | {episode_reward:8.2f} | {current_avg_reward:8.2f} | {episode_end_reason}")
+                print(f"回合: {episode:5d} | 步数: {episode_steps:5d} | 奖励: {episode_reward:8.2f} | 平均奖励: {current_avg_reward:8.2f} | 结束原因: {episode_end_reason}")
             
             episode += 1
             episode_reward = 0
@@ -1101,7 +1101,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
         if enable_wind:
             wind_summary = f", 风力变化次数: {wind_change_count}, 强度范围: {env.min_wind_strength:.2f}N-{env.max_wind_strength:.2f}N"
         
-        print(f"\n回合 {episode+1} 结束: 飞行持续时间={flight_duration:.2f}秒, 奖励={episode_reward:.2f}{wind_summary}")
+        print(f"\n回合 {episode+1} 评估结果 | 飞行持续时间: {flight_duration:.2f}秒 | 总奖励: {episode_reward:.2f}{wind_summary}")
     
     # 打印评估结果
     avg_reward = sum(episode_rewards) / num_episodes
@@ -1169,7 +1169,7 @@ def test_wind_adaptation(env, actor, device, min_rpm, max_rpm, num_tests=5):
         wind_recovery_times.append(avg_recovery_time)
         
         # 打印当前风速的测试结果
-        print(f"{wind_speed:6.1f} | {avg_error:10.3f} | {avg_recovery_time:10.2f}")
+        print(f"风速: {wind_speed:4.1f}N | 最大误差: {avg_error:8.3f}m | 恢复时间: {avg_recovery_time:8.2f}s")
     
     # 保存数据到CSV文件
     wind_data = np.column_stack((wind_speeds, wind_errors, wind_recovery_times))
