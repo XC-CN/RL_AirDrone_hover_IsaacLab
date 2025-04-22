@@ -243,15 +243,11 @@ class HoverEnv:
             abs(roll) < 0.1 and    # Roll角很小
             abs(pitch) < 0.1):     # Pitch角很小
             self.stable_hover_steps += 1
-            # 长时间稳定悬停给予额外奖励
-            if self.stable_hover_steps >= 50:
-                reward += 5.0  # 给予额外奖励以鼓励稳定悬停
         else:
             self.stable_hover_steps = 0  # 不满足条件时重置计数
             
-        # 如果稳定悬停超过100步，给予高额奖励并结束回合
+        # 如果稳定悬停超过100步，结束回合，但不给额外奖励
         if self.stable_hover_steps >= 100:
-            reward += 50.0  # 给予一个很高的奖励
             done = True      # 结束回合
             self.termination_reason = "稳定悬停成功"
 
@@ -333,7 +329,7 @@ class DQN(nn.Module):
         return action_values
 
 
-def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_drone/model"):
+def train_drone(total_episodes=3000, headless=True, model_save_path="models/model"):
     """训练无人机使用DQN算法
     
     参数:
@@ -550,7 +546,7 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
         return q_net
 
 
-def test_drone(model_path="models/dqn_drone/model_final.pth", headless=False, test_episodes=1, use_chinese=True):
+def test_drone(model_path="models/model_final.pth", headless=False, test_episodes=1, use_chinese=True):
     """测试训练好的DQN模型，并绘制高度随时间变化的图表
     
     参数:
@@ -881,14 +877,14 @@ def test_drone(model_path="models/dqn_drone/model_final.pth", headless=False, te
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DQN算法训练无人机悬停")
     parser.add_argument("--test", action="store_true", help="测试模式而非训练模式")
-    parser.add_argument("--model", type=str, default="models/dqn_drone/model_final.pth", help="测试时使用的模型路径")
+    parser.add_argument("--model", type=str, default="models/model_final.pth", help="测试时使用的模型路径")
     parser.add_argument("--episodes", type=int, default=2000, help="训练总回合数")
     parser.add_argument("--window", action="store_true", help="显示模拟窗口，此模式下图表和Excel数据会覆盖保存，且自动进入无限循环模式(除非指定--loop)")
     parser.add_argument("--loop", type=int, default=1, help="测试回合数，默认为1，设为0表示无限循环")
     parser.add_argument("--english", action="store_true", help="图表使用英文显示，解决中文显示乱码问题")
     
     args = parser.parse_args()
-    
+    models
     # 当使用--window参数时，如果没有明确指定loop，则设置为无限循环
     if args.window and not any('--loop' in arg for arg in sys.argv):
         print("检测到窗口模式，自动设置为无限循环测试。按Ctrl+C可随时停止。")
@@ -905,7 +901,7 @@ if __name__ == "__main__":
         train_drone(
             total_episodes=args.episodes, 
             headless=not args.window, 
-            model_save_path="models/dqn_drone/model"
+            model_save_path="models/model"
         )
 
 # 使用示例:

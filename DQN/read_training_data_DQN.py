@@ -96,7 +96,7 @@ def read_training_data(data_dir="data"):
     return data
 
 def plot_training_curves(data, save_dir="data", smooth_window=20, smooth_method='moving_average'):
-    """绘制训练曲线 - 将奖励和误差曲线合并在一张图上，使用双y轴"""
+    """绘制训练曲线 - 将奖励和误差曲线分别显示在左右两个子图中"""
     if 'rewards' not in data or 'errors' not in data:
         print("缺少训练奖励或位置误差数据，无法绘制训练曲线")
         return
@@ -104,8 +104,8 @@ def plot_training_curves(data, save_dir="data", smooth_window=20, smooth_method=
     save_dir = get_absolute_path(save_dir)
     os.makedirs(save_dir, exist_ok=True)
     
-    # 创建带有两个y轴的图
-    fig, ax1 = plt.subplots(figsize=(12, 6))
+    # 创建1x2的子图布局（一行两列）
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     
     # 确保数据是数组
     rewards = np.array(data['rewards'])
@@ -116,50 +116,51 @@ def plot_training_curves(data, save_dir="data", smooth_window=20, smooth_method=
     smoothed_rewards = smooth_data(rewards, window_size=smooth_window, method=smooth_method)
     smoothed_errors = smooth_data(errors, window_size=smooth_window, method=smooth_method)
     
-    # 第一个y轴 - 奖励
+    # 为整个图表设置一个总标题
+    fig.suptitle('DQN Training Performance', fontsize=16, y=0.98)
+    
+    # 左侧子图 - 奖励
     color1 = 'blue'
     ax1.set_xlabel('Episode')
-    ax1.set_ylabel('Cumulative Reward', color=color1)
+    ax1.set_ylabel('Cumulative Reward')
     ax1.plot(episodes, rewards, alpha=0.3, color='lightblue', label='Original Data')
     ax1.plot(episodes, smoothed_rewards, color=color1, linewidth=2, label='Smoothed Data')
-    ax1.tick_params(axis='y', labelcolor=color1)
     ax1.grid(True, alpha=0.3)
-    ax1.set_title('Training Reward Curve')
+    ax1.set_title('Training Rewards')
     
-    # 添加图例到第一个轴
-    ax1.legend(loc='upper left')
-    
-    # 添加说明文本
-    ax1.text(0.02, 0.98, 'Higher rewards indicate\nbetter control performance', 
+    # 添加说明文本到左侧子图
+    ax1.text(0.05, 0.95, 'Higher rewards indicate\nbetter control performance', 
              transform=ax1.transAxes, 
              verticalalignment='top',
              bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
-    # 第二个y轴 - 误差
-    ax2 = ax1.twinx()
+    # 添加图例到左侧子图
+    ax1.legend(loc='upper right')
+    
+    # 右侧子图 - 误差
     color2 = 'red'
-    ax2.set_ylabel('Position Error (m)', color=color2)
+    ax2.set_xlabel('Episode')
+    ax2.set_ylabel('Position Error (m)')
     ax2.plot(episodes, errors, alpha=0.3, color='lightcoral', label='Original Data')
     ax2.plot(episodes, smoothed_errors, color=color2, linewidth=2, label='Smoothed Data')
-    ax2.tick_params(axis='y', labelcolor=color2)
-    ax2.set_title('Position Error Curve')
+    ax2.grid(True, alpha=0.3)
+    ax2.set_title('Position Errors')
     
-    # 设置第二个y轴的显示范围，确保从0开始
+    # 设置右侧子图的显示范围，确保从0开始
     error_max = max(errors) * 1.1
     ax2.set_ylim(0, error_max)
     
-    # 添加图例到第二个轴
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax2.legend(lines2, labels2, loc='upper right')
-    
-    # 添加说明文本到第二个轴
-    ax2.text(0.98, 0.98, 'Lower errors indicate\nhigher positioning accuracy', 
+    # 添加说明文本到右侧子图
+    ax2.text(0.05, 0.95, 'Lower errors indicate\nhigher positioning accuracy', 
              transform=ax2.transAxes, 
              verticalalignment='top',
-             horizontalalignment='right',
              bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
-    plt.tight_layout()
+    # 添加图例到右侧子图
+    ax2.legend(loc='upper right')
+    
+    # 调整布局
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
     save_path = os.path.join(save_dir, 'training_curves_dqn.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()

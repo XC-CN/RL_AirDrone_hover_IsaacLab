@@ -842,7 +842,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             # 仅保存最佳模型
             if current_avg_reward > best_avg_reward:
                 best_avg_reward = current_avg_reward
-                model_path = f"models/ppo/quad_hover_ppo_best_model.pt"
+                model_path = f"models/quad_hover_ppo_best_model.pt"
                 
                 torch.save({
                     'actor': actor.state_dict(),
@@ -952,7 +952,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     """
     # 如果未指定模型路径，默认使用最终模型
     if model_path is None:
-        model_path = "models/ppo/quad_hover_ppo_final_model.pt"
+        model_path = "models/quad_hover_ppo_final_model.pt"
     
     # 设置参数
     state_dim = 18  # 与训练时相同
