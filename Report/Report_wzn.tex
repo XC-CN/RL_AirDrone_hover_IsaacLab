@@ -75,50 +75,6 @@ The remainder of this project is organized as follows: Section 2 provides an ove
 
 % 本文的其余部分组织如下：第2节概述了四旋翼飞行器控制的传统方法和基于学习的方法相关工作。第3节详细介绍了我们的方法，包括强化学习公式、神经网络架构和训练过程。第4节展示了实验结果和算法之间的比较。第5节讨论了我们方法的优势、局限性和挑战。最后，第6节总结了论文并概述了未来工作的方向。
 
-\section{Related Work}
-\subsection{Traditional Control Approaches}
-
-Quadcopter control has been traditionally approached using various model-based techniques. The most prevalent among these is the PID control, which adjusts motor outputs based on the error between the desired and actual state \cite{bouabdallah2004pid}. While PID controllers are straightforward to implement, they require careful tuning of control parameters and often struggle to maintain performance when faced with external disturbances or model uncertainties.
-
-% 四旋翼飞行器控制传统上使用各种基于模型的技术。其中最普遍的是PID控制，它根据期望状态和实际状态之间的误差调整电机输出\cite{bouabdallah2004pid}。虽然PID控制器实现简单，但它们需要仔细调整控制参数，并且在面对外部干扰或模型不确定性时常常难以保持性能。
-
-More advanced techniques include Linear Quadratic Regulator (LQR) \cite{chitsaz2011lqr}, which provides optimal control by minimizing a quadratic cost function, and Model Predictive Control (MPC) \cite{alexis2011mpc}, which iteratively solves an optimization problem over a receding horizon. These approaches can achieve better performance than PID but depend heavily on accurate system models and increase computational complexity.
-
-% 更先进的技术包括线性二次调节器（LQR）\cite{chitsaz2011lqr}，它通过最小化二次代价函数提供最优控制，以及模型预测控制（MPC）\cite{alexis2011mpc}，它在滚动时域上迭代求解优化问题。这些方法可以实现比PID更好的性能，但严重依赖于准确的系统模型，并增加了计算复杂性。
-
-Nonlinear control methods such as backstepping \cite{madani2006backstepping} and sliding mode control \cite{xu2006slidingmode} have also been applied to quadcopter systems, offering robustness against certain types of uncertainties but often at the cost of control chattering and implementation complexity.
-
-% 非线性控制方法，如反步法\cite{madani2006backstepping}和滑模控制\cite{xu2006slidingmode}也已应用于四旋翼飞行器系统，对某些类型的不确定性提供了鲁棒性，但通常以控制抖动和实现复杂性为代价。
-
-In the context of wind disturbance rejection specifically, various estimation and adaptation techniques have been proposed. These include wind velocity estimation using extended Kalman filters \cite{balas2018disturbance} and adaptive control methods that modify controller parameters based on disturbance estimates \cite{wang2016adaptive}.
-
-% 在风干扰抑制的具体背景下，已提出了各种估计和适应技术。这些包括使用扩展卡尔曼滤波器的风速估计\cite{balas2018disturbance}和基于干扰估计修改控制器参数的自适应控制方法\cite{wang2016adaptive}。
-
-\subsection{Learning-Based Approaches}
-
-Recently, there has been growing interest in applying machine learning techniques to quadcopter control. Supervised learning approaches have been used to learn control policies from expert demonstrations \cite{zhang2016learning}, but these methods are limited by the quality and coverage of the demonstration data.
-
-% 最近，应用机器学习技术于四旋翼飞行器控制的兴趣日益增长。监督学习方法已被用于从专家示范中学习控制策略\cite{zhang2016learning}，但这些方法受到示范数据质量和覆盖范围的限制。
-
-Reinforcement learning offers a more flexible paradigm by learning through direct interaction with the environment. Deep Deterministic Policy Gradient (DDPG) has been applied to quadcopter control tasks \cite{hwangbo2017ddpg}, showing promise in learning stable policies. Soft Actor-Critic (SAC) \cite{ha2020sac} has demonstrated effectiveness in learning energy-efficient control policies for quadcopters.
-
-% 强化学习通过与环境的直接交互学习提供了更灵活的范式。深度确定性策略梯度（DDPG）已应用于四旋翼飞行器控制任务\cite{hwangbo2017ddpg}，在学习稳定策略方面显示出前景。软演员-评论家（SAC）\cite{ha2020sac}已证明在学习四旋翼飞行器的能源高效控制策略方面的有效性。
-
-PPO, the primary focus of our work, has gained popularity due to its sample efficiency and stability. Koch et al. \cite{koch2019ppo} applied PPO to teach a quadcopter to perform acrobatic maneuvers, while Hwangbo et al. \cite{hwangbo2019learning} demonstrated successful sim-to-real transfer of PPO policies for quadcopter control.
-
-% PPO，我们工作的主要焦点，因其样本效率和稳定性而受到欢迎。Koch等人\cite{koch2019ppo}应用PPO教导四旋翼飞行器执行特技动作，而Hwangbo等人\cite{hwangbo2019learning}展示了PPO策略从模拟到实际四旋翼飞行器控制的成功转移。
-
-TD3, an improvement over DDPG, addresses function approximation errors in actor-critic methods through several innovations including delayed policy updates and target policy smoothing \cite{fujimoto2018td3}. This algorithm has shown promising results in continuous control tasks but has been less extensively studied for quadcopter applications.
-
-% TD3，DDPG的改进版，通过几项创新解决了演员-评论家方法中的函数近似误差，包括延迟策略更新和目标策略平滑\cite{fujimoto2018td3}。该算法在连续控制任务中显示出有希望的结果，但在四旋翼飞行器应用中研究较少。
-
-DQN and its variants have been primarily applied to discrete action spaces, making them less common in quadcopter control. However, some researchers have adapted DQN for continuous control by discretizing the action space \cite{yu2019dqncopter}, albeit with potential limitations in control precision.
-
-% DQN及其变体主要应用于离散动作空间，使其在四旋翼飞行器控制中不太常见。然而，一些研究人员通过离散化动作空间使DQN适用于连续控制\cite{yu2019dqncopter}，尽管在控制精度方面可能有局限性。
-
-Common challenges in applying RL to quadcopter control include designing appropriate reward functions, ensuring training stability, and bridging the reality gap for sim-to-real transfer. Our work addresses these challenges by carefully designing the reward structure, comparing multiple algorithms, and utilizing a high-fidelity simulation environment.
-
-% 将RL应用于四旋翼飞行器控制的常见挑战包括设计适当的奖励函数、确保训练稳定性以及弥合从模拟到实际转移的现实差距。我们的工作通过精心设计奖励结构、比较多种算法以及利用高保真模拟环境来解决这些挑战。
 
 \section{Methodology}
 \subsection{Problem Formulation}
@@ -149,9 +105,9 @@ We formulate the quadcopter hovering problem as a reinforcement learning task wh
 
 \subsection{Simulation Environment}
 
-We developed our simulation environment using NVIDIA's Isaac Sim, which provides high-fidelity physics simulation based on NVIDIA PhysX. The simulation includes:
+We developed our simulation environment using NVIDIA's Isaac Sim through the IsaacLab framework. IsaacLab is a higher-level abstraction layer built on top of Isaac Sim that provides simplified APIs and tools specifically designed for robotics research and reinforcement learning. While Isaac Sim provides the underlying high-fidelity physics simulation based on NVIDIA PhysX, IsaacLab offers convenient wrappers, pre-built robot models, and reinforcement learning utilities that accelerate development. Our simulation includes:
 
-% 我们使用NVIDIA的Isaac Sim开发了我们的模拟环境，它基于NVIDIA PhysX提供高保真物理模拟。模拟包括：
+% 我们使用NVIDIA的Isaac Sim通过IsaacLab框架开发了我们的模拟环境。IsaacLab是构建在Isaac Sim之上的更高级抽象层，提供专为机器人研究和强化学习设计的简化API和工具。虽然Isaac Sim提供基于NVIDIA PhysX的底层高保真物理模拟，但IsaacLab提供了便捷的包装器、预构建的机器人模型和强化学习工具，加速了开发。我们的模拟包括：
 
 \begin{itemize}
     \item A Crazyflie quadcopter model with realistic mass and inertia properties
@@ -167,9 +123,9 @@ We developed our simulation environment using NVIDIA's Isaac Sim, which provides
 %     \item 用于调试和演示的逼真可视化功能
 % \end{itemize}
 
-The wind disturbance model generates random wind forces with magnitudes between 0.3 to 0.5 Newtons and randomly varying directions. The wind conditions are periodically updated to simulate changing wind patterns, creating a challenging control environment that requires adaptive behavior from the agent.
+The wind disturbance model generates random wind forces with magnitudes between 0.2 to 0.4 Newtons and randomly varying directions. The wind conditions are periodically updated to simulate changing wind patterns, creating a challenging control environment that requires adaptive behavior from the agent. IsaacLab's integration with Isaac Sim allowed us to efficiently implement these physics-based features while maintaining training speed suitable for reinforcement learning experiments.
 
-% 风干扰模型生成大小在0.3至0.5牛顿之间且方向随机变化的风力。风况定期更新以模拟变化的风型，创造了一个具有挑战性的控制环境，需要智能体表现出适应性行为。
+% 风干扰模型生成大小在0.2至0.4牛顿之间且方向随机变化的风力。风况定期更新以模拟变化的风型，创造了一个具有挑战性的控制环境，需要智能体表现出适应性行为。IsaacLab与Isaac Sim的集成使我们能够高效地实现这些基于物理的功能，同时保持适合强化学习实验的训练速度。
 
 \subsection{Reinforcement Learning Algorithms}
 \subsubsection{Proximal Policy Optimization (PPO)}
@@ -196,7 +152,7 @@ The actor network maps states to action distributions, parameterized by mean and
 
 % 演员网络将状态映射到动作分布，由高斯分布的均值和标准差参数化。评论家网络估计价值函数以确定每个状态-动作对的优势。这些网络共享类似的结构但具有单独的参数：
 
-\begin{algorithm}
+\begin{algorithm}[h]
 \caption{PPO Training Algorithm}
 \begin{algorithmic}[1]
 \State Initialize actor network $\pi_\theta$ and critic network $V_\phi$
@@ -335,81 +291,37 @@ The training process for each algorithm follows a similar structure:
 %     \item 根据评估指标保存表现最佳的模型
 % \end{enumerate}
 
-For PPO, we used the following hyperparameters:
-\begin{itemize}
-    \item Learning rates: 3e-4 (actor) and 1e-3 (critic)
-    \item Discount factor: 0.99
-    \item GAE parameter: 0.95
-    \item Clip ratio: 0.2
-    \item Entropy coefficient: 0.01
-    \item Value function coefficient: 0.5
-    \item Number of epochs: 10
-    \item Batch size: 128
-    \item Buffer size: 4096
-\end{itemize}
+\begin{table}[H]
+\centering
+\caption{Hyperparameters for the reinforcement learning algorithms}
+\label{tab:hyperparameters}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Hyperparameter} & \textbf{PPO} & \textbf{TD3} & \textbf{DQN} \\
+\midrule
+Learning rate & 3e-4 (actor), 1e-3 (critic) & 1e-4 & 5e-4 \\
+Discount factor & 0.99 & 0.99 & 0.99 \\
+Buffer size & 4,096 & 20,000 & 50,000 \\
+Batch size & 128 & 256 & 64 \\
+Number of epochs & 10 & -- & -- \\
+GAE parameter & 0.95 & -- & -- \\
+Clip ratio & 0.2 & -- & -- \\
+Entropy coefficient & 0.01 & -- & -- \\
+Value function coefficient & 0.5 & -- & -- \\
+Policy delay & -- & 3 & -- \\
+Target policy noise & -- & 0.1 & -- \\
+Noise clip & -- & 0.3 & -- \\
+Target network update frequency & -- & -- & 5,000 steps \\
+Initial exploration & -- & -- & 1.0 \\
+Final exploration & -- & -- & 0.1 \\
+Exploration fraction & -- & -- & 0.5 \\
+Training episodes & 2,000 & 2,000 & 2,000 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-% 对于PPO，我们使用了以下超参数：
-% \begin{itemize}
-%     \item 学习率：3e-4（演员）和1e-3（评论家）
-%     \item 折扣因子：0.99
-%     \item GAE参数：0.95
-%     \item 裁剪比率：0.2
-%     \item 熵系数：0.01
-%     \item 价值函数系数：0.5
-%     \item 训练轮数：10
-%     \item 批量大小：128
-%     \item 缓冲区大小：4096
-% \end{itemize}
-
-For TD3, we used:
-\begin{itemize}
-    \item Learning rate: 1e-4
-    \item Discount factor: 0.99
-    \item Buffer size: 20,000
-    \item Batch size: 256
-    \item Policy delay: 3
-    \item Target policy noise: 0.1
-    \item Noise clip: 0.3
-\end{itemize}
-
-% 对于TD3，我们使用了：
-% \begin{itemize}
-%     \item 学习率：1e-4
-%     \item 折扣因子：0.99
-%     \item 缓冲区大小：20,000
-%     \item 批量大小：256
-%     \item 策略延迟：3
-%     \item 目标策略噪声：0.1
-%     \item 噪声裁剪：0.3
-% \end{itemize}
-
-For DQN, we used:
-\begin{itemize}
-    \item Learning rate: 5e-4
-    \item Discount factor: 0.99
-    \item Buffer size: 50,000
-    \item Batch size: 64
-    \item Target network update frequency: 5000 steps
-    \item Initial exploration: 1.0
-    \item Final exploration: 0.1
-    \item Exploration fraction: 0.5
-\end{itemize}
-
-% 对于DQN，我们使用了：
-% \begin{itemize}
-%     \item 学习率：5e-4
-%     \item 折扣因子：0.99
-%     \item 缓冲区大小：50,000
-%     \item 批量大小：64
-%     \item 目标网络更新频率：5000步
-%     \item 初始探索率：1.0
-%     \item 最终探索率：0.1
-%     \item 探索比例：0.5
-% \end{itemize}
-
-Each algorithm was trained for a fixed number of episodes (1000 for PPO, 2000 for TD3, and 3000 for DQN) to allow for fair comparison.
-
-% 每种算法都训练了固定数量的回合（PPO为1000回合，TD3为2000回合，DQN为3000回合），以便进行公平比较。
+Each algorithm was trained for a different number of episodes as indicated in Table \ref{tab:hyperparameters}, providing sufficient learning time for fair comparison while accounting for their different sample efficiencies.
+% 如表\ref{tab:hyperparameters}所示，每种算法都经过了不同集数的训练，为公平比较提供了充足的学习时间，同时也考虑到了它们不同的样本效率。
 
 \section{Results}
 \subsection{Training Performance}
