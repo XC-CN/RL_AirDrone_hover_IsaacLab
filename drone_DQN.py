@@ -71,8 +71,8 @@ class HoverEnv:
             device = str(device)
         self.device = device
         # 转速最大最小值
-        self.min_rpm = 2000
-        self.max_rpm = 3000
+        self.min_rpm = 0
+        self.max_rpm = 2000
 
         # 用来追踪悬停时间
         self.hover_time = 0.0
@@ -875,3 +875,6 @@ if __name__ == "__main__":
             headless=not args.window, 
             model_save_path="models/dqn_drone/model"
         )
+
+# 使用示例:
+# 有窗口测试：python drone_DQN.py --test --window
