@@ -554,7 +554,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
     episode_end_reason = ""
     
     # 创建输出目录
-    os.makedirs('outputs/plots', exist_ok=True)
+    os.makedirs('data/train_results', exist_ok=True)
     
     # 初始化数据存储
     episode_rewards = []
@@ -1209,7 +1209,7 @@ if __name__ == "__main__":
         evaluate_model(model_path, enable_gui=True, enable_wind=enable_wind)
     else:
         # 训练模式
-        max_episodes = 1000  # 默认最大episode数
+        max_episodes = 2000  # 默认最大episode数
         enable_gui = False   # 默认训练时关闭GUI以加速训练
         
         # 解析命令行参数

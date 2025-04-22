@@ -112,7 +112,9 @@ class HoverEnv:
             drone_path = f"/World/Crazyflie_{self.sim_id}"
             robot_cfg = CRAZYFLIE_CFG.replace(prim_path=drone_path)
 
-            robot_cfg.spawn.func(drone_path, robot_cfg.spawn, translation=robot_cfg.init_state.pos)
+            # 修改初始位置为(0,0,1)
+            custom_init_pos = [0.0, 0.0, 1.0]
+            robot_cfg.spawn.func(drone_path, robot_cfg.spawn, translation=custom_init_pos)
             self.robot = Articulation(robot_cfg)
 
             self.sim.reset()
@@ -201,29 +203,20 @@ class HoverEnv:
         vx, vy, vz = state[3], state[4], state[5]  # 速度
         roll, pitch, yaw = state[6], state[7], state[8]  # 姿态角
 
-        # 奖励设置
-        # 基于高度的奖励（想要高度接近 0.5）
-        height_reward = -5 * abs(z - 0.5)  # 惩罚高度偏离目标
-
-        # 基于俯仰角的奖励（鼓励保持平衡）
-        pitch_reward = -abs(pitch)  # 惩罚俯仰角偏离 0.0
+        # 计算到目标位置的欧氏距离（目标位置为(0,0,0.5)）
+        position_error = np.array([x, y, z - 0.5])
+        distance_to_target = np.linalg.norm(position_error)
         
-        # 基于滚动角的奖励（鼓励保持平衡）
-        roll_reward = -abs(roll)  # 惩罚滚动角偏离 0.0
+        # 使用与PPO一致的奖励函数，基于到目标位置的距离计算
+        # 距离越小，奖励越大
+        reward = 10.0 * np.exp(-10.0 * distance_to_target**2)
         
-        # 垂直速度奖励（鼓励垂直速度接近0，实现更稳定的悬停）
-        vz_reward = -10 * abs(vz)  # 惩罚垂直速度不为0
-        
-        # # 悬停奖励：只有在非常接近目标高度0.5时才给予固定奖励
-        hover_reward = 0
-        
-        # 判断是否结束：高度过低或过高，或者俯仰角过大
+        # 判断是否结束：高度过低或过高，或者姿态角过大
         done = False
 
-        # 结束条件：高度过低或过高，或者俯仰角过大
+        # 结束条件：高度过低或过高，或者姿态角过大
         if z < 0.25 or z > 0.75:  # 高度范围
             done = True
-            height_reward -= 20  # 高度过大或过小时给负奖励
             if z < 0.1:
                 self.termination_reason = "高度过低"
             else:
@@ -231,12 +224,10 @@ class HoverEnv:
 
         if abs(pitch) > 1:  # 俯仰角超过一定阈值时视为失败
             done = True
-            pitch_reward -= 20  # 俯仰角过大时给负奖励
             self.termination_reason = "俯仰角过大"
             
         if abs(roll) > 1:  # 滚动角超过一定阈值时视为失败
             done = True
-            roll_reward -= 20  # 滚动角过大时给负奖励
             self.termination_reason = "滚动角过大"
             
         # 稳定悬停结束条件
@@ -252,26 +243,27 @@ class HoverEnv:
             abs(roll) < 0.1 and    # Roll角很小
             abs(pitch) < 0.1):     # Pitch角很小
             self.stable_hover_steps += 1
-            hover_reward += 100
+            # 长时间稳定悬停给予额外奖励
+            if self.stable_hover_steps >= 50:
+                reward += 5.0  # 给予额外奖励以鼓励稳定悬停
         else:
             self.stable_hover_steps = 0  # 不满足条件时重置计数
             
         # 如果稳定悬停超过100步，给予高额奖励并结束回合
         if self.stable_hover_steps >= 100:
-            hover_reward += 1000.0  # 给予一个很高的奖励
+            reward += 50.0  # 给予一个很高的奖励
             done = True      # 结束回合
             self.termination_reason = "稳定悬停成功"
 
-        # 综合奖励：包括高度、俯仰角、滚动角、垂直速度和悬停奖励
-        reward = height_reward + pitch_reward + roll_reward + vz_reward + hover_reward 
-
-        # 创建包含奖励明细的info字典
+        # 创建包含信息的info字典
         info = {
-            "height_reward": height_reward,
-            "pitch_reward": pitch_reward,  # 使用实际计算中的系数
-            "roll_reward": roll_reward,    # 使用实际计算中的系数
-            "vz_reward": vz_reward,
-            "hover_reward": hover_reward,
+            "distance_to_target": distance_to_target,
+            "stable_hover_steps": self.stable_hover_steps,
+            "height_reward": 0,  # 不再使用单独的高度奖励，保持字段兼容性
+            "pitch_reward": 0,   # 不再使用单独的俯仰角奖励，保持字段兼容性
+            "roll_reward": 0,    # 不再使用单独的滚动角奖励，保持字段兼容性
+            "vz_reward": 0,      # 不再使用单独的垂直速度奖励，保持字段兼容性
+            "hover_reward": 0,   # 不再使用单独的悬停奖励，保持字段兼容性
             "total_reward": reward,
             "termination_reason": self.termination_reason if done else None
         }
@@ -364,6 +356,12 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
         os.makedirs(model_dir, exist_ok=True)
         print(f"创建模型保存目录: {model_dir}")
     
+    # 创建数据保存目录
+    data_dir = "data"
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir, exist_ok=True)
+        print(f"创建数据保存目录: {data_dir}")
+    
     # 创建环境
     device = "cuda" if torch.cuda.is_available() else "cpu"
     env = HoverEnv(device=device, headless=headless)
@@ -387,6 +385,7 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
     start_time = time.time()
     all_rewards = []
     all_lengths = []
+    all_position_errors = []
     update_count = 0
     
     termination_reasons = []  # 用于统计各种结束原因的列表
@@ -400,6 +399,7 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
             state = env.reset()
             total_reward = 0
             episode_length = 0
+            last_position_error = 0
             
             for step in range(300):  # 每回合最多300步
                 episode_length += 1
@@ -417,6 +417,10 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
 
                 # 执行动作
                 next_state, reward, done, info = env.step(action)
+                
+                # 计算位置误差 (与目标位置[0,0,0.5]的距离)
+                position_error = np.sqrt((next_state[0]**2 + next_state[1]**2 + (next_state[2] - 0.5)**2))
+                last_position_error = position_error
                 
                 # 存储经验 - 注意：存储的是sqrt(RPM)
                 buffer.append((state, sqrt_action, reward, next_state, done))
@@ -459,6 +463,7 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
             # 收集统计信息
             all_rewards.append(total_reward)
             all_lengths.append(episode_length)
+            all_position_errors.append(last_position_error)
             
             # 更新epsilon值
             epsilon = max(epsilon * epsilon_decay, epsilon_min)
@@ -483,15 +488,31 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
                 f"每步平均奖励: {avg_reward:8.1f} | "
                 f"步数: {episode_length:4d} | "
                 f"ε: {epsilon:.3f} | "
-                # f"更新次数: {update_count:6d} | "
+                f"位置误差: {last_position_error:.3f} | "
                 f"用时: {hours:02d}:{minutes:02d}:{seconds:02d} | "
                 f"结束原因: {info.get('termination_reason', '未知原因') if done else '进行中'}"
             )
             
-            # # 在回合结束时记录原因
-            # if done:
-            #     reason = info.get("termination_reason", "未知原因")
-            #     termination_reasons.append(reason)
+            # 每100回合保存一次训练数据
+            if episode % 100 == 0 or episode == total_episodes - 1:
+                # 保存训练奖励数据
+                rewards_data = np.array(all_rewards)
+                np.savetxt(f'{data_dir}/training_rewards.csv', 
+                          rewards_data, delimiter=',', 
+                          header='episode_reward', comments='')
+                
+                # 保存位置误差数据
+                errors_data = np.array(all_position_errors)
+                np.savetxt(f'{data_dir}/position_errors.csv', 
+                          errors_data, delimiter=',', 
+                          header='position_error', comments='')
+                
+                print(f"训练数据已保存到 {data_dir} 目录")
+            
+            # 记录原因
+            if done:
+                reason = info.get("termination_reason", "未知原因")
+                termination_reasons.append(reason)
             
     except Exception as e:
         import traceback
@@ -503,6 +524,22 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/dqn_
         final_model_path = f"{model_save_path}_final.pth"
         torch.save(q_net, final_model_path)
         print(f"\n模型已保存到 {final_model_path}")
+        
+        # 保存最终训练数据
+        if len(all_rewards) > 0:
+            # 保存训练奖励数据
+            rewards_data = np.array(all_rewards)
+            np.savetxt(f'{data_dir}/training_rewards.csv', 
+                      rewards_data, delimiter=',', 
+                      header='episode_reward', comments='')
+            
+            # 保存位置误差数据
+            errors_data = np.array(all_position_errors)
+            np.savetxt(f'{data_dir}/position_errors.csv', 
+                      errors_data, delimiter=',', 
+                      header='position_error', comments='')
+            
+            print(f"最终训练数据已保存到 {data_dir} 目录")
         
         # 关闭环境
         env.close()
@@ -850,7 +887,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DQN算法训练无人机悬停")
     parser.add_argument("--test", action="store_true", help="测试模式而非训练模式")
     parser.add_argument("--model", type=str, default="models/dqn_drone/model_final.pth", help="测试时使用的模型路径")
-    parser.add_argument("--episodes", type=int, default=500, help="训练总回合数")
+    parser.add_argument("--episodes", type=int, default=2000, help="训练总回合数")
     parser.add_argument("--window", action="store_true", help="显示模拟窗口，此模式下图表和Excel数据会覆盖保存，且自动进入无限循环模式(除非指定--loop)")
     parser.add_argument("--loop", type=int, default=1, help="测试回合数，默认为1，设为0表示无限循环")
     parser.add_argument("--english", action="store_true", help="图表使用英文显示，解决中文显示乱码问题")
