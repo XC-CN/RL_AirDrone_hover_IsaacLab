@@ -33,7 +33,7 @@
 \maketitle
 
 \begin{abstract}
-This paper presents a reinforcement learning approach for robust quadcopter hovering control in simulated environments with wind disturbances. We explore and compare three prominent reinforcement learning algorithms: Proximal Policy Optimization (PPO), Twin Delayed Deep Deterministic Policy Gradient (TD3), and Deep Q-Network (DQN). We implement these algorithms in NVIDIA's Isaac Sim physics environment, enabling high-fidelity simulation of quadcopter dynamics. Our results demonstrate that the PPO algorithm achieves superior performance in maintaining stable hovering position despite wind disturbances, outperforming both TD3 and DQN approaches. The system successfully learns to control a Crazyflie quadcopter model, adjusting motor RPMs to counteract external disturbances and maintain a target hovering position. This research highlights the potential of reinforcement learning for developing robust control systems for unmanned aerial vehicles operating in challenging environments.
+This project presents a reinforcement learning approach for robust quadcopter hovering control in simulated environments with wind disturbances. We explore and compare three prominent reinforcement learning algorithms: Proximal Policy Optimization (PPO), Twin Delayed Deep Deterministic Policy Gradient (TD3), and Deep Q-Network (DQN). We implement these algorithms in NVIDIA's Isaac Sim physics environment, enabling high-fidelity simulation of quadcopter dynamics. Our results demonstrate that the PPO algorithm achieves superior performance in maintaining stable hovering position despite wind disturbances, outperforming both TD3 and DQN approaches. The system successfully learns to control a Crazyflie quadcopter model, adjusting motor RPMs to counteract external disturbances and maintain a target hovering position. This research highlights the potential of reinforcement learning for developing robust control systems for unmanned aerial vehicles operating in challenging environments.
 \end{abstract}
 
 % 本文提出了一种强化学习方法，用于在有风干扰的模拟环境中实现四旋翼飞行器的稳健悬停控制。我们探索并比较了三种著名的强化学习算法：近端策略优化（PPO）、双延迟深度确定性策略梯度（TD3）和深度Q网络（DQN）。我们在NVIDIA的Isaac Sim物理环境中实现了这些算法，实现了四旋翼飞行器动力学的高保真度模拟。我们的结果表明，尽管存在风干扰，PPO算法在保持稳定悬停位置方面取得了优异的性能，优于TD3和DQN方法。该系统成功地学会了控制Crazyflie四旋翼飞行器模型，调整电机转速以抵消外部干扰并保持目标悬停位置。这项研究突显了强化学习在开发适用于挑战性环境的无人机稳健控制系统方面的潜力。   
@@ -51,7 +51,7 @@ Reinforcement Learning (RL) offers a promising alternative that can potentially 
 
 % 强化学习（RL）提供了一种有前途的替代方案，可能克服这些限制。通过与环境的交互学习，RL算法可以开发出对干扰具有鲁棒性的控制策略，而无需显式的系统模型。这种方法对于在不可预测的户外环境中运行的四旋翼飞行器特别有价值，因为风况可能显著影响飞行稳定性。
 
-In this paper, we investigate the application of three prominent RL algorithms—PPO, TD3, and DQN—to the problem of quadcopter hovering control in the presence of wind disturbances. We utilize NVIDIA's Isaac Sim, a high-fidelity physics simulator, to create a realistic environment for training and evaluation. Our implementation is based on the Crazyflie quadcopter model, providing a practical platform for potential real-world transfer.
+In this project, we investigate the application of three prominent RL algorithms—PPO, TD3, and DQN—to the problem of quadcopter hovering control in the presence of wind disturbances. We utilize NVIDIA's Isaac Sim, a high-fidelity physics simulator, to create a realistic environment for training and evaluation. Our implementation is based on the Crazyflie quadcopter model, providing a practical platform for potential real-world transfer.
 
 % 在本文中，我们研究了三种著名的RL算法——PPO、TD3和DQN——在存在风干扰的情况下应用于四旋翼飞行器悬停控制问题。我们利用NVIDIA的Isaac Sim（一种高保真物理模拟器）创建了一个逼真的环境用于训练和评估。我们的实现基于Crazyflie四旋翼飞行器模型，为潜在的实际应用提供了一个实用平台。
 
@@ -71,7 +71,7 @@ The key contributions of this work include:
 %     \item 对基于RL的空中机器人控制系统设计考虑的见解
 % \end{itemize}
 
-The remainder of this paper is organized as follows: Section 2 provides an overview of related work in both traditional and learning-based approaches to quadcopter control. Section 3 details our methodology, including the reinforcement learning formulation, neural network architecture, and training process. Section 4 presents experimental results and comparisons between the algorithms. Section 5 discusses the advantages, limitations, and challenges of our approach. Finally, Section 6 concludes the paper and outlines directions for future work.
+The remainder of this project is organized as follows: Section 2 provides an overview of related work in both traditional and learning-based approaches to quadcopter control. Section 3 details our methodology, including the reinforcement learning formulation, neural network architecture, and training process. Section 4 presents experimental results and comparisons between the algorithms. Section 5 discusses the advantages, limitations, and challenges of our approach. Finally, Section 6 concludes the project and outlines directions for future work.
 
 % 本文的其余部分组织如下：第2节概述了四旋翼飞行器控制的传统方法和基于学习的方法相关工作。第3节详细介绍了我们的方法，包括强化学习公式、神经网络架构和训练过程。第4节展示了实验结果和算法之间的比较。第5节讨论了我们方法的优势、局限性和挑战。最后，第6节总结了论文并概述了未来工作的方向。
 
@@ -743,7 +743,7 @@ Based on our findings, several promising directions for future work emerge:
 
 \section{Conclusion}
 
-In this paper, we presented a reinforcement learning approach for robust quadcopter hovering control in the presence of wind disturbances. Through systematic exploration, we found that PPO achieved successful performance in terms of position accuracy and hover stability, while both TD3 and DQN failed to learn effective control policies despite extensive tuning efforts.
+In this project, we presented a reinforcement learning approach for robust quadcopter hovering control in the presence of wind disturbances. Through systematic exploration, we found that PPO achieved successful performance in terms of position accuracy and hover stability, while both TD3 and DQN failed to learn effective control policies despite extensive tuning efforts.
 
 % 在本文中，我们提出了一种强化学习方法，用于在风干扰存在的情况下实现稳健的四旋翼飞行器悬停控制。通过系统探索，我们发现PPO在位置精度和悬停稳定性方面取得了成功的性能，而TD3和DQN尽管经过广泛调整努力，都未能学习有效的控制策略。
 
