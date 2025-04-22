@@ -31,7 +31,7 @@ class ResultAnalyzer:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
         # 创建结果目录
-        self.output_dir = os.path.join(current_dir, "figures")
+        self.output_dir = os.path.join(current_dir, "figures/test")
         os.makedirs(self.output_dir, exist_ok=True)
         
         # 生成输出文件名前缀
