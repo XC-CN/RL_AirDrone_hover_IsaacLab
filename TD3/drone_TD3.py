@@ -467,9 +467,9 @@ def train_drone(total_episodes=1000, num_envs=1, with_window=False, initial_rpm=
         initial_rpm: 初始电机转速，影响起始悬停状态
     """
     # 创建保存模型的目录
-    log_dir = "./logs/td3_drone"
+    log_dir = "TD3/logs/td3_drone"
     os.makedirs(log_dir, exist_ok=True)
-    model_dir = "./models/td3_drone"
+    model_dir = "TD3/models/td3_drone"
     os.makedirs(model_dir, exist_ok=True)
     
     # 创建环境
@@ -670,7 +670,7 @@ def test_drone(model_path=None, initial_rpm=5150):
         model = TD3.load(model_path, env=env)
         print(f"已加载模型: {model_path}")
     else:
-        model_path = "./models/td3_drone/td3_drone_final"
+        model_path = "TD3/models/td3_drone/td3_drone_final"
         model = TD3.load(model_path, env=env)
         print(f"已加载模型: {model_path}")
     
@@ -804,18 +804,18 @@ if __name__ == "__main__":
 
 2. 训练选项:
    - 使用无界面模式: 默认启用
-   - 设置训练回合数: python drone_TD3.py --episodes 5000
-   - 使用并行环境: python drone_TD3.py --envs 4
-   - 训练时显示窗口: python drone_TD3.py --window
-   - 设置初始旋翼转速: python drone_TD3.py --initial-rpm 5150
+   - 设置训练回合数: python TD3/drone_TD3.py --episodes 5000
+   - 使用并行环境: python TD3/drone_TD3.py --envs 4
+   - 训练时显示窗口: python TD3/drone_TD3.py --window
+   - 设置初始旋翼转速: python TD3/drone_TD3.py --initial-rpm 5150
    
-   最快速训练组合示例: python drone_TD3.py --episodes 5000 --envs 5
-   显示窗口训练示例: python drone_TD3.py --window --episodes 1000
+   最快速训练组合示例: python TD3/drone_TD3.py --episodes 5000 --envs 5
+   显示窗口训练示例: python TD3/drone_TD3.py --window --episodes 1000
 
 3. 测试模型:
-   python drone_TD3.py --test                       # 使用默认模型进行测试
-   python drone_TD3.py --test --model 模型路径       # 使用指定模型进行测试
-   python drone_TD3.py --test --initial-rpm 5200    # 使用指定初始转速测试
+   python TD3/drone_TD3.py --test                       # 使用默认模型进行测试
+   python TD3/drone_TD3.py --test --model 模型路径       # 使用指定模型进行测试
+   python TD3/drone_TD3.py --test --initial-rpm 5200    # 使用指定初始转速测试
    
    测试过程会自动无限循环，按Ctrl+C可随时中断并查看统计结果
 

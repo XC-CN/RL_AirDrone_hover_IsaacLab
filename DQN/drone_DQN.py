@@ -344,7 +344,7 @@ def train_drone(total_episodes=3000, headless=True, model_save_path="models/mode
         print(f"创建模型保存目录: {model_dir}")
     
     # 创建数据保存目录
-    data_dir = "data"
+    data_dir = "DQN/data"
     if not os.path.exists(data_dir):
         os.makedirs(data_dir, exist_ok=True)
         print(f"创建数据保存目录: {data_dir}")
@@ -884,7 +884,7 @@ if __name__ == "__main__":
     parser.add_argument("--english", action="store_true", help="图表使用英文显示，解决中文显示乱码问题")
     
     args = parser.parse_args()
-    models
+    
     # 当使用--window参数时，如果没有明确指定loop，则设置为无限循环
     if args.window and not any('--loop' in arg for arg in sys.argv):
         print("检测到窗口模式，自动设置为无限循环测试。按Ctrl+C可随时停止。")
