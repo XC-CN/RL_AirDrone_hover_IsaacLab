@@ -1,0 +1,28 @@
+name: isaaclab
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.10
+  - pip=22.3.1
+  - numpy=1.24.3
+  - matplotlib=3.7.1
+  - pytorch=2.5.1
+  - torchvision=0.20.1
+  - cudatoolkit=11.8
+  - pip:
+    - gym==0.26.0
+    - pyyaml==6.0
+    - tensorboard==2.14.0
+    - pillow==10.0.0
+    - tqdm==4.66.1
+    - opencv-python==4.8.0.76
+    - scipy==1.11.3
+    - pandas==2.1.0
+    # Isaac Sim packages - these should be installed according to the IsaacLab documentation
+    # pip install 'isaacsim[all,extscache]==4.5.0' --extra-index-url https://pypi.nvidia.com
+    # The following packages are expected to be installed with Isaac Sim
+    # and are not included in this file:
+    # - isaacgym
+    # - isaaclab 

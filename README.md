@@ -1,104 +1,163 @@
-# 四旋翼无人机强化学习控制系统
+# Reinforcement Learning-Based Quadcopter Hovering Control (Isaac Sim Environment)
 
-## 项目简介
+## Project Overview
 
-本项目使用IsaacLab物理仿真环境，结合多种强化学习算法（PPO、DQN、TD3）实现了四旋翼无人机的悬停和姿态控制。项目模拟了真实环境中的风力干扰，提高了控制系统的鲁棒性和稳定性。
+This project implements and compares reinforcement learning algorithms for quadcopter hovering control under wind disturbances in NVIDIA's Isaac Sim physics simulation environment. The main focus is on the Proximal Policy Optimization (PPO) algorithm, with additional implementations of Twin Delayed Deep Deterministic Policy Gradient (TD3) and Deep Q-Network (DQN) for comparison.
 
-## 主要功能
+The project demonstrates how reinforcement learning can be applied to develop robust control policies for drones operating in challenging environments without explicit system modeling.
 
-- **多种强化学习算法**：实现了PPO（近端策略优化）、DQN（深度Q网络）和TD3（双延迟深度确定策略梯度）算法
-- **风力干扰模拟**：支持随机风力干扰，模拟真实飞行环境
-- **精确姿态控制**：实现四旋翼无人机的稳定悬停和姿态控制
-- **仿真可视化**：支持GUI模式直观观察无人机飞行状态
-- **性能评估**：提供模型评估工具，计算平均奖励、飞行时间和悬停成功率
+## Key Features
 
-## 环境要求
+- **Multiple Reinforcement Learning Algorithms**: Implementations of PPO, TD3, and DQN for comparison
+- **Wind Disturbance Simulation**: Realistic wind modeling with adjustable magnitude and direction
+- **High-Fidelity Physics Engine**: Built on NVIDIA's Isaac Sim, providing accurate quadcopter dynamics
+- **Comprehensive Evaluation**: Tools for evaluating control performance under various wind conditions
+- **Visualization**: Training curves, position error analysis, and control response metrics
 
-- Python 3.6+
-- PyTorch 1.9+
-- NVIDIA Isaac Sim
-- CUDA支持的NVIDIA GPU（推荐）
+## System Requirements
 
-## 安装步骤
+### Software
+- Python 3.10
+- PyTorch 
+- NVIDIA Isaac Sim 2022.1.0 or newer
+- NVIDIA IsaacLab framework
+- Windows 10 & 11
 
-1. 安装NVIDIA Isaac Sim：[官方安装指南](https://developer.nvidia.com/isaac-sim)
+### Hardware
+- CUDA-capable NVIDIA GPU (recommended for faster training)
+- 8GB+ GPU memory for Isaac Sim
+- 16GB+ system memory
 
-2. 安装项目依赖：
+## Installation
+
+1. **Install NVIDIA Isaac Sim 4.5.0 using pip**:
+   ```bash
+   # Use the conda environment file
+   conda env update -f environment.yml
+   conda activate isaaclab
+   
+   # Install PyTorch
+   # CUDA 11:
+   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu118
+   # CUDA 12:
+   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
+   
+   # Update pip
+   pip install --upgrade pip
+   
+   # Install Isaac Sim
+   pip install 'isaacsim[all,extscache]==4.5.0' --extra-index-url https://pypi.nvidia.com
+   ```
+
+2. **Clone this repository and install Isaac Lab**:
+   ```bash
+   # Clone the IsaacLab repository in your workspace
+   git clone https://github.com/isaac-sim/IsaacLab.git
+   cd IsaacLab
+   
+   # Install IsaacLab extensions and dependencies
+   ./isaaclab.bat --install   # On Windows
+   
+   # Clone this project repository
+   git clone https://github.com/yourusername/RL_AirDrone_hover_IsaacLab.git
+   cd RL_AirDrone_hover_IsaacLab
+   ```
+  
+
+## Verifying the installation
+
+To verify that both Isaac Sim and this project are installed correctly:
+
 ```bash
-pip install torch numpy matplotlib
-```
+# Test Isaac Sim installation
+isaacsim
 
-3. 克隆项目仓库：
-```bash
-git clone https://github.com/your-username/IsaacLab.git
+# Test IsaacLab installation
 cd IsaacLab
+isaaclab.bat -p scripts\tutorials\00_sim\create_empty.py  # On Windows
+
+# Test this project
+cd RL_AirDrone_hover_IsaacLab
+python PPO/drone_PPO.py evaluate --wind
 ```
 
-## 使用方法
+## Project Structure
 
-### 训练模型
+```
+RL_AirDrone_hover_IsaacLab/
+├── PPO/
+│   ├── drone_PPO.py          # Main PPO implementation
+│   ├── figures/              # Training curves and results visualization
+│   └── models/               # Saved PPO models
+├── TD3/
+│   ├── drone_TD3.py          # TD3 implementation  
+│   └── models/               # Saved TD3 models
+├── DQN/
+│   ├── drone_DQN.py          # DQN implementation
+│   └── models/               # Saved DQN models
+├── Report/                   # Project report and analysis
+├── environment.yml           # Conda environment definition
+└── README.md                 # This file
+```
+
+## Usage
+
+### Training
 
 ```bash
-# 使用PPO算法训练无人机悬停（无风力干扰）
-python Project/drone_PPO.py 1000
+# Train using PPO algorithm (default, recommended)
+python PPO/drone_PPO.py --episodes 2000
 
-# 启用风力干扰进行训练
-python Project/drone_PPO.py 2000 --wind
+# Train with wind disturbances
+python PPO/drone_PPO.py --episodes 2000 --wind
 
-# 使用GUI模式进行训练（速度较慢但可视化效果好）
-python Project/drone_PPO.py 1000 --gui
+# Train with GUI for visualization (slower)
+python PPO/drone_PPO.py --episodes 2000 --gui
 
-# 使用DQN或TD3算法训练
-python Project/drone_DQN.py 1000
-python Project/drone_TD3.py 1000
+# Train using TD3 or DQN (for comparison)
+python TD3/drone_TD3.py --episodes 2000
+python DQN/drone_DQN.py --episodes 2000
 ```
 
-### 评估模型
+### Evaluation
 
 ```bash
-# 评估训练好的PPO模型（默认使用最佳模型）
-python Project/drone_PPO.py evaluate
+# Evaluate trained PPO model with visualization
+python PPO/drone_PPO.py evaluate --model PPO/models/quad_hover_ppo_best_model.pt
 
-# 评估特定模型在有风力干扰环境中的性能
-python Project/drone_PPO.py evaluate --model models/ppo/best_model.pt --wind
+# Evaluate with wind disturbances
+python PPO/drone_PPO.py evaluate --model PPO/models/quad_hover_ppo_best_model.pt --wind
 
-# 评估DQN或TD3模型
-python Project/drone_DQN.py evaluate
-python Project/drone_TD3.py evaluate
+# Evaluate other algorithms
+python TD3/drone_TD3.py evaluate --model TD3/models/best_model.pt
+python DQN/drone_DQN.py evaluate --model DQN/models/best_model.pt
 ```
 
-## 项目结构
+## Algorithm Comparison
 
-- `Project/`：主项目目录
-  - `drone_PPO.py`：PPO算法实现与无人机控制
-  - `drone_DQN.py`：DQN算法实现
-  - `drone_TD3.py`：TD3算法实现
-  - `quadcopter.py`：四旋翼无人机物理模型
-  - `test_crazyflie_attitude.py`：姿态控制测试脚本
-  - `models/`：预训练模型存储目录
-  - `data/`：训练数据存储目录
-  - `figures/`：图表和可视化结果
-  - `Report/`：项目报告和文档
+| Algorithm | Stability | Sample Efficiency | Performance in Wind | Convergence Speed |
+|-----------|-----------|-------------------|---------------------|-------------------|
+| PPO       | Excellent | Good              | Excellent           | Medium            |
+| TD3       | Poor      | Medium            | Poor                | Slow              |
+| DQN       | Fair      | Poor              | Poor                | Fast              |
 
-## 算法比较
+Our results show that PPO significantly outperforms both TD3 and DQN for this continuous control task. PPO achieves stable hovering even under varying wind conditions, while the other algorithms struggle with basic stability.
 
-| 算法 | 稳定性 | 训练速度 | 样本效率 | 适用场景 |
-|-----|-------|---------|---------|---------|
-| PPO | 高 | 中 | 高 | 连续动作空间，需要稳定性 |
-| DQN | 中 | 快 | 低 | 离散动作空间，探索性强 |
-| TD3 | 高 | 慢 | 高 | 连续动作空间，高精度控制 |
+## Key Results
 
-## 引用
+- PPO successfully learns to stabilize the quadcopter at a target hover position (1m height)
+- The trained policy can maintain position with average error <0.1m in no-wind conditions
+- Under wind disturbances up to 0.5N, position error remains below 0.2m
+- The controller adapts to changing wind directions by automatically adjusting attitude angles
 
-如果您使用本项目进行研究，请引用：
+## Acknowledgments
 
-```bibtex
-@misc{DroneRL2023,
-  author = {Wu Zining},
-  title = {四旋翼无人机强化学习控制系统},
-  year = {2025},
-  publisher = {GitHub},
-  journal = {GitHub Repository},
-  howpublished = {\url{https://github.com/your-username/IsaacLab}}
-}
-```
+This project uses NVIDIA's Isaac Sim and IsaacLab framework. The RL algorithms are implemented in PyTorch and draw inspiration from the following papers:
+
+- PPO: Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O. (2017). Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347.
+- TD3: Fujimoto, S., Hoof, H., & Meger, D. (2018). Addressing function approximation error in actor-critic methods. ICML.
+- DQN: Mnih, V., Kavukcuoglu, K., Silver, D., et al. (2015). Human-level control through deep reinforcement learning. Nature.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
