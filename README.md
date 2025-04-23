@@ -1,4 +1,5 @@
 # Reinforcement Learning-Based Quadcopter Hovering Control (Isaac Sim Environment)
+Github: https://github.com/XC-CN/RL_AirDrone_hover_IsaacLab.git
 
 ## Project Overview
 
@@ -59,7 +60,7 @@ The project demonstrates how reinforcement learning can be applied to develop ro
    ./isaaclab.bat --install   # On Windows
    
    # Clone this project repository
-   git clone https://github.com/yourusername/RL_AirDrone_hover_IsaacLab.git
+   git clone https://github.com/XC-CN/RL_AirDrone_hover_IsaacLab.git
    cd RL_AirDrone_hover_IsaacLab
    ```
   
