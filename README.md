@@ -77,8 +77,9 @@ cd IsaacLab
 isaaclab.bat -p scripts\tutorials\00_sim\create_empty.py  # On Windows
 
 # Test this project
+# The model that is run here is the one that has already been trained
 cd RL_AirDrone_hover_IsaacLab
-python PPO/drone_PPO.py evaluate --wind
+python PPO/drone_PPO.py evaluate --wind --model PPO/models/best_model.pt
 ```
 
 ## Project Structure

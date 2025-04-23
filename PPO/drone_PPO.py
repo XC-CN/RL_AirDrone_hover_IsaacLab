@@ -8,6 +8,7 @@ import argparse
 from isaaclab.app import AppLauncher
 import time
 from torch.distributions import Normal
+import os
 
 # 全局变量
 total_steps = 0
@@ -758,31 +759,46 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             # 仅保存最佳模型
             if current_avg_reward > best_avg_reward:
                 best_avg_reward = current_avg_reward
-                model_path = f"models/ppo/quad_hover_ppo_best_model.pt"
                 
-                torch.save({
-                    'actor': actor.state_dict(),
-                    'critic': critic.state_dict(),
-                    'actor_optimizer': actor_optimizer.state_dict(),
-                    'critic_optimizer': critic_optimizer.state_dict(),
-                    'episode': episode,
-                    'total_steps': total_steps,
-                    'avg_reward': current_avg_reward
-                }, model_path)
-                print(f"Best model saved: {model_path}, Average reward: {current_avg_reward:.2f}")
+                # 创建models目录（如果不存在）
+                model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+                os.makedirs(model_dir, exist_ok=True)
+                
+                # 使用绝对路径保存模型
+                model_path = os.path.join(model_dir, "quad_hover_ppo_best_model.pt")
+                
+                try:
+                    torch.save({
+                        'actor': actor.state_dict(),
+                        'critic': critic.state_dict(),
+                        'actor_optimizer': actor_optimizer.state_dict(),
+                        'critic_optimizer': critic_optimizer.state_dict(),
+                        'episode': episode,
+                        'total_steps': total_steps,
+                        'avg_reward': current_avg_reward
+                    }, model_path)
+                    print(f"Best model saved: {model_path}, Average reward: {current_avg_reward:.2f}")
+                except Exception as e:
+                    print(f"Error saving model: {str(e)}")
     
     # 训练结束，保存最终模型
-    final_model_path = f"models/ppo/quad_hover_ppo_final_model.pt"
-    torch.save({
-        'actor': actor.state_dict(),
-        'critic': critic.state_dict(),
-        'actor_optimizer': actor_optimizer.state_dict(),
-        'critic_optimizer': critic_optimizer.state_dict(),
-        'episode': episode,
-        'total_steps': total_steps,
-        'avg_reward': current_avg_reward if len(avg_rewards) > 0 else 0.0
-    }, final_model_path)
-    print(f"Final model saved: {final_model_path}")
+    model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+    os.makedirs(model_dir, exist_ok=True)
+    final_model_path = os.path.join(model_dir, "quad_hover_ppo_final_model.pt")
+    
+    try:
+        torch.save({
+            'actor': actor.state_dict(),
+            'critic': critic.state_dict(),
+            'actor_optimizer': actor_optimizer.state_dict(),
+            'critic_optimizer': critic_optimizer.state_dict(),
+            'episode': episode,
+            'total_steps': total_steps,
+            'avg_reward': current_avg_reward if len(avg_rewards) > 0 else 0.0
+        }, final_model_path)
+        print(f"Final model saved: {final_model_path}")
+    except Exception as e:
+        print(f"Error saving final model: {str(e)}")
     
     # 关闭环境
     env.close()
@@ -829,7 +845,9 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     # 如果未指定模型路径，默认使用最终模型
     # 模型路径
     if model_path is None:
-        model_path = "PPO/models/quad_hover_ppo_best_model.pt"
+        import os
+        model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+        model_path = os.path.join(model_dir, "quad_hover_ppo_best_model.pt")
     
     # 设置参数
     state_dim = 18  # 与训练时相同
@@ -1063,8 +1081,7 @@ if __name__ == "__main__":
         # 训练有风环境: python drone_PPO.py 2000 --wind
         # 评估无风环境: python drone_PPO.py evaluate 
         # 评估有风环境: python drone_PPO.py evaluate --wind
-        # 测试特定模型(无风): python drone_PPO.py evaluate --model models/ppo/best_model.pt
-        # 测试特定模型(有风): python drone_PPO.py evaluate --model models/ppo/best_model.pt --wind
+
         # 
         # 可以通过以下方式测试不同的模型:
         # 1. 使用--model参数指定模型路径
