@@ -106,17 +106,17 @@ RL_AirDrone_hover_IsaacLab/
 
 ```bash
 # Train using PPO algorithm (default, recommended)
-python PPO/drone_PPO.py --episodes 2000
+python PPO/drone_PPO.py 2000
 
 # Train with wind disturbances
-python PPO/drone_PPO.py --episodes 2000 --wind
+python PPO/drone_PPO.py 2000 --wind
 
 # Train with GUI for visualization (slower)
-python PPO/drone_PPO.py --episodes 2000 --gui
+python PPO/drone_PPO.py 2000 --wind --gui
 
 # Train using TD3 or DQN (for comparison)
-python TD3/drone_TD3.py --episodes 2000
-python DQN/drone_DQN.py --episodes 2000
+python TD3/drone_TD3.py --episodes 2000 
+python DQN/drone_DQN.py --episodes 2000 
 ```
 
 ### Evaluation
@@ -157,7 +157,3 @@ This project uses NVIDIA's Isaac Sim and IsaacLab framework. The RL algorithms a
 - PPO: Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O. (2017). Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347.
 - TD3: Fujimoto, S., Hoof, H., & Meger, D. (2018). Addressing function approximation error in actor-critic methods. ICML.
 - DQN: Mnih, V., Kavukcuoglu, K., Silver, D., et al. (2015). Human-level control through deep reinforcement learning. Nature.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.

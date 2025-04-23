@@ -8,6 +8,8 @@ import argparse
 from isaaclab.app import AppLauncher
 import time
 from torch.distributions import Normal
+import os
+import platform
 
 # 全局变量
 total_steps = 0
@@ -19,6 +21,8 @@ def rpm_to_force(rpm, k_f=1e-6):
 class HoverEnv:
     def __init__(self, device="cpu", enable_gui=True, enable_wind=False):
         self.device = device
+
+        # 转速设置
         self.min_rpm = 4500
         self.max_rpm = 5500
         self.enable_gui = enable_gui  # 是否启用GUI
@@ -29,7 +33,7 @@ class HoverEnv:
         self.wind_direction = 0.0  # 初始风向，将在更新风力时设置
         self.wind_direction_deg = 0.0  # 风向(角度)，用于输出显示
         
-        # 风力随机范围 风力设置 风力范围 风力限制
+        # 风力随机范围 风力设置 
         self.min_wind_strength = 0.2  # 最小风力强度 (N)
         self.max_wind_strength = 0.4  # 最大风力强度 (N)
         
@@ -113,7 +117,7 @@ class HoverEnv:
         
         # 打印风力信息
         if self.enable_gui:
-            print(f"New wind settings: Strength={self.wind_strength:.2f}N, Direction={self.wind_direction_deg:.1f}°")
+            print(f"新的风力设置: 强度={self.wind_strength:.2f}N, 风向={self.wind_direction_deg:.1f}°")
 
     def _update_wind_force(self):
         """更新风力，增加随机变化"""
@@ -132,7 +136,8 @@ class HoverEnv:
         if self.enable_gui and self.enable_wind:
             # 如果启用了GUI且风力不为零，打印风力信息
             wind_dir_deg = np.degrees(current_direction)
-            print(f"\rCurrent wind: {current_strength:.2f}N, Direction: {wind_dir_deg:.1f}°", end="")
+            # 直接使用\r方式，确保字符串足够长
+            print(f"当前风力: {current_strength:.2f}N, 风向: {wind_dir_deg:.1f}°" + " " * 40, end="\r", flush=True)
 
     def reset(self):
         # 如果启用了风力，在每个回合开始时重新随机生成风力和风向
@@ -522,7 +527,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
     
     # 打印风力设置
     if enable_wind:
-        print(f"Training environment wind settings: Random wind enabled, Strength range=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N], Direction=random")
+        print(f"训练环境风力设置: 启用随机风力，强度范围=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N]，风向=随机")
     
     # 创建PPO模型
     actor = PPOActor(state_dim, action_dim).to(device)
@@ -552,15 +557,33 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
     # 回合结束原因跟踪
     episode_end_reason = ""
     
-    print("Starting training...")
+    # 创建输出目录
+    os.makedirs('data/train_results', exist_ok=True)
+    
+    # 初始化数据存储
+    episode_rewards = []
+    position_errors = []
+    control_inputs = []
+    
+    # 风力测试数据 - 只在训练后期或结束后记录
+    wind_test_data = {
+        'wind_speeds': [],
+        'position_errors': [],
+        'recovery_times': []
+    }
+    
+    # 设置开始记录风力数据的episode
+    start_wind_recording_episode = 600  # 从第600个episode开始记录风力数据
+    
+    print("开始训练...")
     if not enable_gui:
-        print("GUI mode disabled for training, training speed will be significantly increased")
+        print("无GUI模式，训练速度将大幅提升")
     
     # 打印表头
     if enable_wind:
-        header = "Episode |   Steps |    Reward  |  Average Reward |   Wind(N)  |   Wind Direction(°)  |  End Reason"
+        header = "回合  |  步数  |   奖励   |  平均奖励  |   风力   |   风向   | 结束原因"
     else:
-        header = "Episode |   Steps |    Reward  |  Average Reward |  End Reason"
+        header = "回合  |  步数  |   奖励   |  平均奖励  | 结束原因"
     divider = "-" * 100
     print(divider)
     print(header)
@@ -597,7 +620,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
         # 检查是否达到最大步数
         if episode_steps >= max_steps_per_episode:
             done = True
-            episode_end_reason = f"Maximum steps reached ({max_steps_per_episode} steps)"
+            episode_end_reason = f"达到最大步数限制 ({max_steps_per_episode}步)"
         
         # 获取速度和姿态信息
         lin_vel = np.array([next_state[9], next_state[10], next_state[11]])  # 线速度
@@ -621,7 +644,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             
         # 如果持续稳定悬停一段时间，提前结束当前episode
         if stable_hover_time >= stable_time_required:
-            episode_end_reason = f"Stable hovering achieved ({stable_time_required} steps)"
+            episode_end_reason = f"稳定悬停达到阈值 ({stable_time_required}步)"
             done = True
         
         # 存储经验
@@ -722,17 +745,80 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
                 # 获取高度和XY位置
                 x, y, z = next_state[0], next_state[1], next_state[2]
                 if z < env.min_height or z > env.max_height:
-                    episode_end_reason = f"Height out of bounds ({z:.2f})"
+                    episode_end_reason = f"高度超出范围 ({z:.2f})"
                 elif abs(x) > env.xy_boundary or abs(y) > env.xy_boundary:
-                    episode_end_reason = f"Horizontal position out of bounds ({x:.2f}, {y:.2f})"
+                    episode_end_reason = f"水平位置超出范围 ({x:.2f}, {y:.2f})"
                 else:
-                    episode_end_reason = "Internal environment termination"
+                    episode_end_reason = "环境内部终止条件"
+            
+            # 记录episode数据
+            episode_rewards.append(episode_reward)
+            position_errors.append(np.linalg.norm(position_error))
+            
+            # 只在训练后期记录风力测试数据
+            if enable_wind and episode >= start_wind_recording_episode:
+                wind_test_data['wind_speeds'].append(env.wind_strength)
+                wind_test_data['position_errors'].append(np.linalg.norm(position_error))
+                wind_test_data['recovery_times'].append(episode_steps * env.dt)
             
             # 记录平均奖励
             avg_rewards.append(episode_reward)
             if len(avg_rewards) > 10:
                 avg_rewards.pop(0)
             current_avg_reward = sum(avg_rewards) / len(avg_rewards)
+            
+            # 每100个episode保存一次数据
+            if episode % 100 == 0:
+                try:
+                    # 保存训练奖励数据
+                    rewards_data = np.array(episode_rewards)
+                    np.savetxt('PPO/data/training_rewards.csv', rewards_data,
+                              delimiter=',', header='episode_reward', comments='')
+                    print(f"✓ 训练奖励数据已保存到 training_rewards.csv (共{len(rewards_data)}条记录)")
+                    
+                    # 保存位置误差数据
+                    errors_data = np.array(position_errors)
+                    np.savetxt('PPO/data/position_errors.csv', errors_data,
+                              delimiter=',', header='position_error', comments='')
+                    print(f"✓ 位置误差数据已保存到 position_errors.csv (共{len(errors_data)}条记录)")
+                    
+                    # 保存控制输入数据
+                    if control_inputs:
+                        inputs_data = np.array(control_inputs)
+                        np.savetxt('outputs/plots/control_inputs.csv', inputs_data,
+                                  delimiter=',', header='motor1,motor2,motor3,motor4', comments='')
+                        print(f"✓ 控制输入数据已保存到 control_inputs.csv (共{len(inputs_data)}条记录)")
+                    
+                    # 如果启用了风力，且已经过了开始记录风力的episode，保存风力适应数据
+                    if enable_wind and episode >= start_wind_recording_episode and wind_test_data['wind_speeds']:
+                        # 按风速分组计算平均误差和恢复时间
+                        unique_wind_speeds = np.unique(wind_test_data['wind_speeds'])
+                        avg_errors = []
+                        avg_recovery_times = []
+                        
+                        for wind_speed in unique_wind_speeds:
+                            # 找出该风速下的所有数据索引
+                            indices = [i for i, speed in enumerate(wind_test_data['wind_speeds']) if speed == wind_speed]
+                            # 计算平均误差和恢复时间
+                            avg_errors.append(np.mean([wind_test_data['position_errors'][i] for i in indices]))
+                            avg_recovery_times.append(np.mean([wind_test_data['recovery_times'][i] for i in indices]))
+                        
+                        # 保存按风速分组的平均数据
+                        wind_data = np.column_stack((
+                            unique_wind_speeds,
+                            avg_errors,
+                            avg_recovery_times
+                        ))
+                        np.savetxt('outputs/plots/wind_adaptation.csv', wind_data,
+                                  delimiter=',', header='wind_speed,position_error,recovery_time', comments='')
+                        print(f"✓ 风力适应数据已保存到 wind_adaptation.csv")
+                        print(f"  - 测试的风速范围: {min(unique_wind_speeds):.2f}N 到 {max(unique_wind_speeds):.2f}N")
+                        print(f"  - 平均位置误差: {np.mean(avg_errors):.3f}m")
+                        print(f"  - 平均恢复时间: {np.mean(avg_recovery_times):.2f}s")
+                    
+                    print(f"\n第 {episode} 回合数据已保存完成")
+                except Exception as e:
+                    print(f"保存数据时出错: {str(e)}")
             
             # 启用异步重置，在前一个episode结束后立即开始下一个
             if async_reset:
@@ -741,9 +827,9 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             
             # 格式化输出回合信息
             if enable_wind:
-                print(f"{episode:7d} | {episode_steps:5d} | {episode_reward:8.2f} | {current_avg_reward:8.2f} | {env.wind_strength:8.2f} | {env.wind_direction_deg:9.1f} | {episode_end_reason}")
+                print(f"回合: {episode:5d} | 步数: {episode_steps:5d} | 奖励: {episode_reward:8.2f} | 平均奖励: {current_avg_reward:8.2f} | 风力: {env.wind_strength:7.2f}N | 风向: {env.wind_direction_deg:8.1f}° | 结束原因: {episode_end_reason}")
             else:
-                print(f"{episode:7d} | {episode_steps:5d} | {episode_reward:8.2f} | {current_avg_reward:8.2f} | {episode_end_reason}")
+                print(f"回合: {episode:5d} | 步数: {episode_steps:5d} | 奖励: {episode_reward:8.2f} | 平均奖励: {current_avg_reward:8.2f} | 结束原因: {episode_end_reason}")
             
             episode += 1
             episode_reward = 0
@@ -758,7 +844,7 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
             # 仅保存最佳模型
             if current_avg_reward > best_avg_reward:
                 best_avg_reward = current_avg_reward
-                model_path = f"models/ppo/quad_hover_ppo_best_model.pt"
+                model_path = f"models/quad_hover_ppo_best_model.pt"
                 
                 torch.save({
                     'actor': actor.state_dict(),
@@ -769,20 +855,60 @@ def train_ppo(max_episodes=1000, enable_gui=False, enable_wind=False):
                     'total_steps': total_steps,
                     'avg_reward': current_avg_reward
                 }, model_path)
-                print(f"Best model saved: {model_path}, Average reward: {current_avg_reward:.2f}")
+                print(f"最佳模型已保存: {model_path}, 平均奖励: {current_avg_reward:.2f}")
     
-    # 训练结束，保存最终模型
-    final_model_path = f"models/ppo/quad_hover_ppo_final_model.pt"
-    torch.save({
-        'actor': actor.state_dict(),
-        'critic': critic.state_dict(),
-        'actor_optimizer': actor_optimizer.state_dict(),
-        'critic_optimizer': critic_optimizer.state_dict(),
-        'episode': episode,
-        'total_steps': total_steps,
-        'avg_reward': current_avg_reward if len(avg_rewards) > 0 else 0.0
-    }, final_model_path)
-    print(f"Final model saved: {final_model_path}")
+    # 训练结束，保存最终数据
+    try:
+        # 保存最终训练奖励数据
+        rewards_data = np.array(episode_rewards)
+        np.savetxt('outputs/plots/training_rewards.csv', rewards_data,
+                  delimiter=',', header='episode_reward', comments='')
+        print(f"✓ 最终训练奖励数据已保存到 training_rewards.csv (共{len(rewards_data)}条记录)")
+        
+        # 保存最终位置误差数据
+        errors_data = np.array(position_errors)
+        np.savetxt('outputs/plots/position_errors.csv', errors_data,
+                  delimiter=',', header='position_error', comments='')
+        print(f"✓ 最终位置误差数据已保存到 position_errors.csv (共{len(errors_data)}条记录)")
+        
+        # 保存最终控制输入数据
+        if control_inputs:
+            inputs_data = np.array(control_inputs)
+            np.savetxt('outputs/plots/control_inputs.csv', inputs_data,
+                      delimiter=',', header='motor1,motor2,motor3,motor4', comments='')
+            print(f"✓ 最终控制输入数据已保存到 control_inputs.csv (共{len(inputs_data)}条记录)")
+        
+        # 如果启用了风力，保存最终风力适应数据
+        if enable_wind and wind_test_data['wind_speeds']:
+            # 按风速分组计算平均误差和恢复时间
+            unique_wind_speeds = np.unique(wind_test_data['wind_speeds'])
+            avg_errors = []
+            avg_recovery_times = []
+            
+            for wind_speed in unique_wind_speeds:
+                # 找出该风速下的所有数据索引
+                indices = [i for i, speed in enumerate(wind_test_data['wind_speeds']) if speed == wind_speed]
+                # 计算平均误差和恢复时间
+                avg_errors.append(np.mean([wind_test_data['position_errors'][i] for i in indices]))
+                avg_recovery_times.append(np.mean([wind_test_data['recovery_times'][i] for i in indices]))
+            
+            # 保存按风速分组的平均数据
+            wind_data = np.column_stack((
+                unique_wind_speeds,
+                avg_errors,
+                avg_recovery_times
+            ))
+            np.savetxt('outputs/plots/wind_adaptation.csv', wind_data,
+                      delimiter=',', header='wind_speed,position_error,recovery_time', comments='')
+            print("\n最终风力适应数据统计:")
+            print(f"✓ 风力适应数据已保存到 wind_adaptation.csv")
+            print(f"  - 测试的风速范围: {min(unique_wind_speeds):.2f}N 到 {max(unique_wind_speeds):.2f}N")
+            print(f"  - 平均位置误差: {np.mean(avg_errors):.3f}m")
+            print(f"  - 平均恢复时间: {np.mean(avg_recovery_times):.2f}s")
+        
+        print("\n训练结束，所有数据已保存完成")
+    except Exception as e:
+        print(f"保存最终数据时出错: {str(e)}")
     
     # 关闭环境
     env.close()
@@ -826,8 +952,10 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
         enable_gui: 是否启用GUI，默认为True进行可视化
         enable_wind: 是否启用随机风力干扰
     """
+    # 检测操作系统类型，Windows下需要特殊处理
+    is_windows = platform.system() == "Windows"
+    
     # 如果未指定模型路径，默认使用最终模型
-    # 模型路径
     if model_path is None:
         model_path = "PPO/models/quad_hover_ppo_best_model.pt"
     
@@ -844,10 +972,10 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     
     # 打印风力设置
     if enable_wind:
-        print(f"Evaluation environment wind settings: Random wind enabled, Strength range=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N], Direction=random")
-        print(f"Wind update frequency: Every 100 steps")
+        print(f"评估环境风力设置: 启用随机风力，强度范围=[{env.min_wind_strength:.2f}N, {env.max_wind_strength:.2f}N]，风向=随机")
+        print(f"风力更新频率: 每300步更新一次")
     else:
-        print("Evaluation environment wind settings: No wind disturbance")
+        print("评估环境风力设置: 无风干扰")
     
     # 加载模型
     actor = PPOActor(state_dim, action_dim).to(device)
@@ -855,15 +983,29 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     actor.load_state_dict(checkpoint['actor'])
     actor.eval()
     
-    print(f"Model loaded: {model_path}")
+    print(f"加载模型: {model_path}")
     if enable_gui:
-        print("GUI mode enabled, drone flight status can be observed")
+        print("GUI模式已启用，可以观察无人机飞行状态")
     
     episode_rewards = []
     episode_durations = []
     hover_success = 0  # 成功悬停的次数
     
+    # 重置计数器
+    reset_counter = 0
+    
     for episode in range(num_episodes):
+        # 每500回合重置无人机环境
+        reset_counter += 1
+        if reset_counter >= 500:
+            print("\n========== 已达到500回合，重新初始化无人机环境 ==========")
+            # 关闭旧环境
+            env.close()
+            # 创建新环境
+            env = HoverEnv(device=device, enable_gui=enable_gui, enable_wind=enable_wind)
+            reset_counter = 0
+            print("无人机环境重置完成")
+        
         state = env.reset()
         episode_reward = 0
         done = False
@@ -877,14 +1019,14 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
         # 记录风力变化
         wind_change_count = 0  # 风力变化次数
         
-        print(f"\n=============== Starting evaluation episode {episode+1} ===============")
+        print(f"\n=============== 开始评估回合 {episode+1} ===============")
         # 打印当前回合的风力信息
         if enable_wind:
-            print(f"Initial wind: Strength={env.wind_strength:.2f}N, Direction={env.wind_direction_deg:.1f}°")
+            print(f"初始风力: 强度={env.wind_strength:.2f}N, 风向={env.wind_direction_deg:.1f}°")
         
         while not done:
-            # 每隔一定步数更新一次风力
-            if enable_wind and steps > 0 and steps % 100 == 0:
+            # 每300步更新一次风力
+            if enable_wind and steps > 0 and steps % 150 == 0:
                 # 保存旧风力信息
                 old_strength = env.wind_strength
                 old_direction = env.wind_direction_deg
@@ -893,23 +1035,15 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
                 env._reset_wind()
                 wind_change_count += 1
                 
-                # 打印风力变化信息
-                print(f"\n--- Step: {steps}, Wind updated (#{wind_change_count}) ---")
-                print(f"Old wind: Strength={old_strength:.2f}N, Direction={old_direction:.1f}°")
-                print(f"New wind: Strength={env.wind_strength:.2f}N, Direction={env.wind_direction_deg:.1f}°")
-            
-            # 重置一次无人机姿态
-            if steps > 0 and steps % 500 == 0:
-                print(f"\n--- Step: {steps}, Resetting drone position ---")
-                state = env.reset()
+                # 风力变化信息用特殊标记，不打印直接跳过
+                # print(f"\n--- 步数: {steps}，风力已更新 (第{wind_change_count}次) ---")
+                # print(f"旧风力: 强度={old_strength:.2f}N, 风向={old_direction:.1f}°")
+                # print(f"新风力: 强度={env.wind_strength:.2f}N, 风向={env.wind_direction_deg:.1f}°")
                 
-                # 如果启用了风力，打印新的风力信息
-                if enable_wind:
-                    print(f"New wind: Strength={env.wind_strength:.2f}N, Direction={env.wind_direction_deg:.1f}°")
-                
-                # 重置稳定悬停计数器
-                stable_hover_time = 0
-                hover_success_this_episode = False
+                # 风力变化仅记录，不打断状态更新流程
+                wind_updated = True
+            else:
+                wind_updated = False
             
             # 转换状态为tensor
             state_tensor = torch.tensor(state, dtype=torch.float32, device=device)
@@ -934,20 +1068,25 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
             position_error = next_state[15:18]  # [x_error, y_error, z_error]
             
             # 实时覆盖输出无人机状态信息，如果有风力，则显示当前风力信息
-            wind_info = ""
             if enable_wind:
                 # 计算当前实际风力和方向（考虑变化）
                 curr_wind_x = env.wind_force_x
                 curr_wind_y = env.wind_force_y
                 curr_wind_strength = np.sqrt(curr_wind_x**2 + curr_wind_y**2)
                 curr_wind_dir = np.degrees(np.arctan2(curr_wind_y, curr_wind_x))
-                wind_info = f" |  Wind: {curr_wind_strength:.2f}N, Direction: {curr_wind_dir:.1f}°"
             
-            print(f"\r Step: {steps:3d} | Position: [{pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}] | "
-                  f"Velocity: [{lin_vel[0]:.2f}, {lin_vel[1]:.2f}, {lin_vel[2]:.2f}] | "
-                  f"Attitude: [{roll:.2f}, {pitch:.2f}, {yaw:.2f}] | "
-                  f"Error: {np.linalg.norm(position_error):.3f}{wind_info}", end="")
+            # 如果风力刚刚更新，先输出风力更新信息
+            if wind_updated:
+                print(f"\n--- 步数: {steps}，风力已更新 (第{wind_change_count}次) ---")
+                print(f"旧风力: 强度={old_strength:.2f}N, 风向={old_direction:.1f}°")
+                print(f"新风力: 强度={env.wind_strength:.2f}N, 风向={env.wind_direction_deg:.1f}°")
             
+            # 常规更新使用\r
+            status_msg = f"\r步数: {steps:3d} | 位置: [{pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}] | 速度: [{lin_vel[0]:.2f}, {lin_vel[1]:.2f}, {lin_vel[2]:.2f}] | 姿态: [{roll:.2f}, {pitch:.2f}, {yaw:.2f}] | 误差: {np.linalg.norm(position_error):.3f}"
+            
+            # 直接使用\r方式，确保字符串足够长
+            print(status_msg, end="", flush=True)
+        
             # 计算当前位置与目标位置的距离
             distance_to_target = np.linalg.norm(position_error)
             
@@ -967,7 +1106,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
                 stable_hover_time += 1
                 # 打印稳定悬停信息，但不结束评估
                 if stable_hover_time == 100 and not hover_success_this_episode:  # stable_time_required = 100
-                    print(f"\nStable hovering detected, continuing to observe performance")
+                    print(f"\n检测到稳定悬停，继续评估观察性能")
                     hover_success_this_episode = True
             else:
                 stable_hover_time = 0
@@ -991,24 +1130,90 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
         # 打印回合总结，加入风力信息
         wind_summary = ""
         if enable_wind:
-            wind_summary = f", Wind changes: {wind_change_count}, Strength range: {env.min_wind_strength:.2f}N-{env.max_wind_strength:.2f}N"
+            wind_summary = f", 风力变化次数: {wind_change_count}, 强度范围: {env.min_wind_strength:.2f}N-{env.max_wind_strength:.2f}N"
         
-        print(f"\nEpisode {episode+1} completed: Flight duration={flight_duration:.2f}s, Reward={episode_reward:.2f}{wind_summary}")
+        print(f"\n回合 {episode+1} 评估结果 | 飞行持续时间: {flight_duration:.2f}秒 | 总奖励: {episode_reward:.2f}{wind_summary}")
     
     # 打印评估结果
     avg_reward = sum(episode_rewards) / num_episodes
     avg_duration = sum(episode_durations) / num_episodes
     success_rate = hover_success / num_episodes * 100
     
-    print("\n===== Evaluation Results =====")
-    print(f"Average reward: {avg_reward:.2f}")
-    print(f"Average flight duration: {avg_duration:.2f}s")
-    print(f"Hovering success rate: {success_rate:.1f}%")
-    print(f"Wind settings: {'Enabled' if enable_wind else 'Disabled'}")
+    print("\n===== 评估结果 =====")
+    print(f"平均奖励: {avg_reward:.2f}")
+    print(f"平均飞行时间: {avg_duration:.2f}秒")
+    print(f"悬停成功率: {success_rate:.1f}%")
+    print(f"风力设置: {'启用' if enable_wind else '禁用'}")
     
     # 关闭环境
     env.close()
     return success_rate
+
+def test_wind_adaptation(env, actor, device, min_rpm, max_rpm, num_tests=5):
+    """测试模型在不同风力条件下的适应能力"""
+    # 创建输出目录
+    os.makedirs('outputs/plots', exist_ok=True)
+    
+    # 测试不同的风速
+    wind_speeds = [0.2, 0.3, 0.4, 0.5]
+    wind_errors = []
+    wind_recovery_times = []
+    
+    print("\n开始风力适应测试...")
+    print("风速(N) | 最大误差(m) | 恢复时间(s)")
+    print("-" * 40)
+    
+    for wind_speed in wind_speeds:
+        env.wind_strength = wind_speed
+        
+        episode_errors = []
+        episode_recovery_times = []
+        
+        for test in range(num_tests):
+            state = env.reset()
+            max_error = 0
+            recovery_start = None
+            
+            for t in range(200):  # 测试200步
+                state_tensor = torch.tensor(state, dtype=torch.float32, device=device)
+                with torch.no_grad():
+                    action = actor.get_action(state_tensor, deterministic=True)
+                rpm_action = min_rpm + (action.cpu().numpy() + 1) * 0.5 * (max_rpm - min_rpm)
+                state, _, done, _ = env.step(rpm_action)
+                
+                error = np.linalg.norm(state[:3] - env.target_position)
+                max_error = max(max_error, error)
+                
+                if error < 0.1 and recovery_start is None:  # 误差小于0.1m时开始计时
+                    recovery_start = t
+                
+                if done:
+                    break
+            
+            episode_errors.append(max_error)
+            episode_recovery_times.append((recovery_start or t) * env.dt)
+        
+        # 计算该风速下的平均误差和恢复时间
+        avg_error = np.mean(episode_errors)
+        avg_recovery_time = np.mean(episode_recovery_times)
+        wind_errors.append(avg_error)
+        wind_recovery_times.append(avg_recovery_time)
+        
+        # 打印当前风速的测试结果
+        print(f"风速: {wind_speed:4.1f}N | 最大误差: {avg_error:8.3f}m | 恢复时间: {avg_recovery_time:8.2f}s")
+    
+    # 保存数据到CSV文件
+    wind_data = np.column_stack((wind_speeds, wind_errors, wind_recovery_times))
+    np.savetxt('outputs/plots/wind_adaptation_data.csv', wind_data, 
+               delimiter=',', header='wind_speed,position_error,recovery_time',
+               comments='')
+    
+    print("\n风力适应测试完成")
+    print(f"平均位置误差: {np.mean(wind_errors):.3f}m")
+    print(f"平均恢复时间: {np.mean(wind_recovery_times):.2f}s")
+    print("测试数据已保存到 wind_adaptation_data.csv")
+    
+    return np.mean(wind_errors), np.mean(wind_recovery_times)
 
 if __name__ == "__main__":
     import sys
@@ -1035,7 +1240,7 @@ if __name__ == "__main__":
         evaluate_model(model_path, enable_gui=True, enable_wind=enable_wind)
     else:
         # 训练模式
-        max_episodes = 1000  # 默认最大episode数
+        max_episodes = 2000  # 默认最大episode数
         enable_gui = False   # 默认训练时关闭GUI以加速训练
         
         # 解析命令行参数
@@ -1043,7 +1248,7 @@ if __name__ == "__main__":
         while i < len(sys.argv):
             if sys.argv[i] == "--gui":
                 enable_gui = True
-                print("GUI mode enabled for training (may reduce training speed)")
+                print("启用GUI模式进行训练（可能会降低训练速度）")
                 i += 1
             elif sys.argv[i] == "--wind":
                 enable_wind = True
@@ -1053,7 +1258,7 @@ if __name__ == "__main__":
                     max_episodes = int(sys.argv[i])
                     i += 1
                 except ValueError:
-                    print("Parameter must be an integer")
+                    print("参数必须是整数")
                     i += 1
         
         train_ppo(max_episodes, enable_gui=enable_gui, enable_wind=enable_wind) 
@@ -1063,12 +1268,3 @@ if __name__ == "__main__":
         # 训练有风环境: python drone_PPO.py 2000 --wind
         # 评估无风环境: python drone_PPO.py evaluate 
         # 评估有风环境: python drone_PPO.py evaluate --wind
-        # 测试特定模型(无风): python drone_PPO.py evaluate --model models/ppo/best_model.pt
-        # 测试特定模型(有风): python drone_PPO.py evaluate --model models/ppo/best_model.pt --wind
-        # 
-        # 可以通过以下方式测试不同的模型:
-        # 1. 使用--model参数指定模型路径
-        # 2. 使用--wind参数启用风力干扰测试模型在扰动环境中的表现
-        # 3. 默认情况下会使用GUI进行可视化，便于观察无人机的飞行状态
-        #
-        # 注意: 测试时会自动计算并显示模型的性能指标，包括平均奖励、平均飞行时间和悬停成功率
