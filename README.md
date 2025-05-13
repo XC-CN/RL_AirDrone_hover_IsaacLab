@@ -128,7 +128,7 @@ python DQN/drone_DQN.py --episodes 2000
 python PPO/drone_PPO.py evaluate --model PPO/models/quad_hover_ppo_best_model.pt
 
 # Evaluate with wind disturbances
-python PPO/drone_PPO.py evaluate --model PPO/models/quad_hover_ppo_best_model.pt --wind
+python drone_PPO.py evaluate --wind --model PPO/models/best_model.pt
 
 # Evaluate other algorithms
 python TD3/drone_TD3.py evaluate --model TD3/models/best_model.pt

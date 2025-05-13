@@ -847,7 +847,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     if model_path is None:
         import os
         model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
-        model_path = os.path.join(model_dir, "best_model.pt")
+        model_path = os.path.join(model_dir, "quad_hover_ppo_best_model.pt")
     
     # 设置参数
     state_dim = 18  # 与训练时相同
@@ -1081,6 +1081,8 @@ if __name__ == "__main__":
         # 训练有风环境: python drone_PPO.py 2000 --wind
         # 评估无风环境: python drone_PPO.py evaluate 
         # 评估有风环境: python drone_PPO.py evaluate --wind
+        # 评估已保存的最佳模型 python drone_PPO.py evaluate --wind --model models/best_model.pt
+        # 在项目根目录运行终端：python PPO/drone_PPO.py evaluate --wind --model PPO/models/best_model.pt
 
         # 
         # 可以通过以下方式测试不同的模型:
