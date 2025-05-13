@@ -847,7 +847,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     if model_path is None:
         import os
         model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
-        model_path = os.path.join(model_dir, "quad_hover_ppo_best_model.pt")
+        model_path = os.path.join(model_dir, "best_model.pt")
     
     # 设置参数
     state_dim = 18  # 与训练时相同

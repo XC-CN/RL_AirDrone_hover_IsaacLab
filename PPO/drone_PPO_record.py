@@ -957,7 +957,7 @@ def evaluate_model(model_path=None, num_episodes=5, enable_gui=True, enable_wind
     
     # 如果未指定模型路径，默认使用最终模型
     if model_path is None:
-        model_path = "PPO/models/quad_hover_ppo_best_model.pt"
+        model_path = "PPO/models/best_model.pt"
     
     # 设置参数
     state_dim = 18  # 与训练时相同
